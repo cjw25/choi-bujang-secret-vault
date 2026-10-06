@@ -6,19 +6,26 @@ const root = resolve(import.meta.dirname, '..');
 const source = resolve(root, 'data.json');
 const output = resolve(root, 'public', 'data.json');
 const config = JSON.parse(await readFile(resolve(root, 'aleph.config.json'), 'utf8'));
-if (config.step !== 1) {
-  throw new Error('1단계 이후에는 공개 data.json 복사를 끝내고 보호된 자료 API로 바꾸세요.');
+
+if (config.step !== 2) {
+  throw new Error('현재 빌드 흐름은 2단계 자료 분리에 맞춰져 있습니다.');
 }
+
 const data = JSON.parse(await readFile(source, 'utf8'));
-if (!Array.isArray(data.notes)) {
-  throw new Error('실습용 공개 자료 형식을 확인하세요. 실제 학생 자료를 넣으면 안 됩니다.');
+if (!Array.isArray(data.notes) || data.notes.length !== 0) {
+  throw new Error('2단계에서는 공개 data.json에 메모를 남기지 마세요.');
 }
+
 await mkdir(resolve(root, 'public'), { recursive: true });
 await copyFile(source, output);
-console.log('실습용 공개 자료를 public/data.json에 복사했습니다.');
+console.log('메모가 비어 있는 공개 data.json을 public/data.json에 복사했습니다.');
+
 if (!process.argv.includes('--local')) {
   const identity = deploymentIdentity(process.env, config);
-  await writeFile(resolve(root, 'public', 'aleph.json'),
-    `${JSON.stringify(identity, null, 2)}\n`, 'utf8');
+  await writeFile(
+    resolve(root, 'public', 'aleph.json'),
+    `${JSON.stringify(identity, null, 2)}\n`,
+    'utf8',
+  );
   console.log('배포 저장소·커밋·주소를 public/aleph.json에 기록했습니다.');
 }
