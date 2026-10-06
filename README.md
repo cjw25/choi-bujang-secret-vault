@@ -58,3 +58,23 @@ Vercel 프로젝트의 Environment Variables에 `SUPABASE_URL`, `SUPABASE_SECRET
 현재 화면은 `/api/notes`를 통해 Supabase의 가상 메모를 읽고, `/data.json`은 빈 `notes` 배열만 제공합니다. 서버 전용 Supabase 키는 Vercel 환경변수에서만 읽으며 브라우저 파일·응답·로그·Git에는 넣지 않습니다. `/api/notes`는 아직 비로그인 공개 주소라는 약점이 남아 있습니다.
 
 다시 확인할 때는 Vercel 환경변수 두 개가 등록된 상태에서 최신 `main`을 배포하고 `/`, `/data.json`, `/api/notes`, `/aleph.json`을 확인합니다. 로컬 정적 빌드는 `npm run build -- --local`, 제출 묶음 점검은 `npm run bundle`로 실행합니다. 현재 Git 원격은 `https://github.com/cjw25/choi-bujang-secret-vault`이고 Production 주소는 `https://jeongwon-vault.vercel.app`으로 기록합니다.
+
+## 3단계 저장점 — 진짜 로그인을 붙입니다
+
+- Supabase Auth의 이메일·비밀번호 로그인과 로그아웃을 공식 SDK 흐름으로 사용합니다. 비밀번호나 JWT를 코드에서 직접 만들거나 저장하지 않습니다.
+- 자료 API는 `src/verify-login.mjs`로 `Authorization: Bearer ...` 토큰을 검사하며, 비로그인 또는 검증 실패 요청에는 자료 없이 JSON 오류를 반환합니다.
+- `GET /api/notes`는 서버가 확인한 사용자 ID의 메모 목록만 돌려주고, `POST /api/notes`는 그 사용자 ID를 `owner_id`로 저장합니다.
+- `GET·PUT·DELETE /api/notes/:id`는 로그인 여부만 확인하고 아직 소유자 일치 검사를 하지 않습니다. 다른 로그인 사용자가 UUID를 알면 접근할 수 있는 허점은 4단계에서 고칩니다.
+- 허용 경로는 `GET /api/notes`, `POST /api/notes`, `GET /api/notes/:id`, `PUT /api/notes/:id`, `DELETE /api/notes/:id`입니다.
+
+### 3단계 직접 확인 기록
+
+- 비로그인 `GET /api/notes`가 JSON 오류와 함께 거부되는 것을 Production에서 직접 확인했습니다.
+- A 테스트 로그인 후 메모 추가·수정·삭제가 화면에서 정상 동작하는 것을 직접 확인했습니다.
+- 삭제한 UUID를 다시 `GET /api/notes/:id`로 요청했을 때의 404는 아직 직접 확인하지 않았으므로 미확인으로 남깁니다.
+- `public/aleph.json` 생성 흐름은 빌드 스크립트에 유지되어 있습니다. 최신 저장점 배포 뒤 `/aleph.json`이 열리는지는 다시 직접 확인합니다.
+- `vercel.json`은 첫 화면을 포함한 응답에 `X-Content-Type-Options: nosniff`를 붙이도록 설정합니다. 최신 저장점 배포 뒤 실제 응답 헤더를 다시 확인합니다.
+
+### 3단계 다시 실행
+
+Vercel의 Supabase 서버 환경변수는 그대로 유지하고 최신 `main`을 배포합니다. 시크릿 창에서 `/api/notes`가 401 또는 403 JSON 오류로 거부되는지 확인하고, A 로그인 뒤 목록·추가·수정·삭제가 동작하는지 확인합니다. `/aleph.json`과 첫 화면의 보안 헤더도 확인합니다. 로컬 빌드는 `npm run build -- --local`, 제출 묶음은 `npm run bundle`로 생성합니다. 현재 Production 주소는 `https://jeongwon-vault.vercel.app`입니다.
