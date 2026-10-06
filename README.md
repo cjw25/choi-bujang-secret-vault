@@ -24,57 +24,40 @@
 
 `src/decider.mjs`와 `src/detect.mjs`의 로컬 시험은 반 엔진이나 운영 심판의 결과가 아닙니다. 1단계 이후 제출 묶음 계약 `aleph.defense.submission.v2`는 `scripts/bundle.mjs`에 남아 있으며, 코딩 도구가 해당 단계의 최신 배포 주소와 Git 원격을 맞춘 뒤 사용합니다.
 
-## 2단계 기록 — 자료를 코드 밖으로 옮깁니다
 
-- 화면은 `/data.json` 대신 Vercel 서버 함수 `/api/notes`를 호출합니다.
-- 서버 함수만 `SUPABASE_URL`과 서버 전용 `SUPABASE_SECRET_KEY`를 환경변수에서 읽습니다. 키 값은 브라우저 코드, 응답, 로그, Git에 넣지 않습니다.
-- 정적 `data.json`과 `public/data.json`의 `notes`는 빈 배열이며 가상 메모 본문을 저장하지 않습니다.
-- 서버 함수는 학습용 Supabase의 `notes` 테이블에서 `title`, `content`만 읽어 화면에 전달합니다.
-- **현재 약점:** `/api/notes` 자체는 아직 인증 없는 공개 주소입니다. 자료가 정적 파일에서 빠졌을 뿐, 비로그인 사용자의 API 호출은 다음 단계에서 막아야 합니다.
 
-### 2단계 배포 전 설정
+## 2단계 저장점 — 자료를 코드 밖으로 옮깁니다
 
-Vercel 프로젝트의 Environment Variables에 `SUPABASE_URL`, `SUPABASE_SECRET_KEY`를 직접 등록합니다. 실제 값은 코드나 대화에 붙여 넣지 않습니다. Supabase 테이블에는 학습용 가상 메모 네 건만 두고 실제 학생 자료를 넣지 않습니다.
+- 정적 `data.json`과 `public/data.json`에는 메모를 두지 않고 빈 `notes` 배열만 남깁니다.
+- 첫 화면은 `/data.json` 대신 Vercel 서버 함수 `GET /api/notes`를 호출합니다.
+- 서버 함수는 `SUPABASE_URL`, `SUPABASE_SECRET_KEY`를 서버 환경변수에서만 읽어 학습용 Supabase의 가상 메모를 가져옵니다.
+- 2단계에서는 아직 로그인을 붙이지 않았으므로 `/api/notes`는 비로그인 사용자도 호출할 수 있습니다. 이 접근 제어는 3단계에서 추가합니다.
+- 첫 화면 응답에는 `X-Content-Type-Options: nosniff` 보안 헤더를 설정합니다.
 
-### 현재 배포·최신 GitHub에서 가상 메모 문장 확인
+### 2단계 설정
 
-이 확인은 **현재 Production 배포와 현재 `main` 최신 파일**에 가상 메모 본문이 정적 자료로 남아 있지 않은지를 보는 절차입니다. 검색할 때는 Supabase에 저장한 가상 메모 본문 전체 문자열을 한 건씩 사용하되, 그 문자열 자체를 README·로그·이슈에 다시 기록하지 않습니다.
+- 단계: `2`
+- Git 저장소: `https://github.com/cjw25/choi-bujang-secret-vault`
+- Production: `https://jeongwon-vault.vercel.app`
+- 로그인 발급자: 없음
+- 허용 경로: 아직 별도 로그인 허용 경로 없음
+- 원본 API 주소: 해당 없음
 
-1. 최신 코드를 배포한 뒤 Production 주소의 `/`, `/data.json`, `/aleph.json`을 각각 새로 받아 확인합니다. `/data.json`의 `notes`는 빈 배열이어야 합니다.
-2. 브라우저 개발자 도구의 **Sources** 또는 내려받은 정적 응답에서 가상 메모 본문 네 건을 각각 검색합니다. `/`, `/data.json`, `/aleph.json`과 브라우저에 전달되는 정적 JS/HTML 파일에서는 일치 결과가 없어야 합니다.
-3. GitHub에서는 `main` 최신 파일을 대상으로 같은 네 본문을 각각 코드 검색합니다. 로컬 저장소가 최신이면 `git fetch origin` 뒤 `git grep -nF -- "$needle" origin/main -- .`처럼 검색할 수 있습니다. 여기서 `$needle`에는 검색할 가상 메모 본문 한 건을 임시로 넣고 네 번 반복합니다.
-4. `/api/notes`는 정적 파일 검사가 아니라 **현재 남아 있는 공개 API 약점 확인**으로 따로 봅니다. 2단계에서는 비로그인 `GET /api/notes`가 성공하면 네 가상 메모가 응답에 나타날 수 있으며, 이것은 다음 단계에서 막아야 할 항목입니다. 서버 전용 키 자체가 응답·브라우저 코드·로그에 나타나면 실패입니다.
-5. Vercel의 Deployments 목록과 GitHub의 커밋 기록도 별도로 확인합니다. 현재 파일에서 검색 결과가 0건이어도 옛 공개 배포나 옛 공개 커밋에 같은 본문이 남아 있으면 과거 노출은 계속 확인 가능한 상태로 취급합니다.
+Vercel Production 환경에는 `SUPABASE_URL`, `SUPABASE_SECRET_KEY`를 직접 등록합니다. 실제 값은 코드, README, Git에 기록하지 않습니다.
 
-#### 확인 결과 기록
+### 다시 확인
 
-- **GitHub 최신 `main`:** 2026-10-06 현재 코드 검색에서 가상 메모 본문이 사용하는 공통 문구 기준 일치 결과 0건. 현재 `data.json`과 `public/data.json`도 메모 배열이 비어 있습니다.
-- **현재 Production 정적 파일:** 최신 커밋이 Production에 재배포된 뒤 위 절차로 직접 확인하고, 네 본문 모두 0건인지 기록합니다. 재배포·검색을 실제로 하지 않았다면 `미확인`으로 남깁니다.
-- **공개 API의 남은 약점:** `/api/notes`는 아직 인증이 없으므로 비로그인 호출로 가상 메모 네 건을 읽을 수 있습니다. 자료가 코드 밖으로 이동했지만 접근 통제까지 완료된 것은 아닙니다.
-- **과거 노출 상태:** 1단계 공개 메모가 들어 있던 이전 공개 커밋과 그 커밋을 사용한 옛 Vercel 배포가 접근 가능한 동안에는 **“과거 노출이 해소됐다”라고 기록하지 않습니다.** 현재 버전에서 정적 노출을 제거했다는 사실과 과거 공개 이력을 분리해서 기록합니다.
+로컬 정적 빌드는 다음 명령으로 확인합니다.
 
-## 2단계 저장점
+`npm run build -- --local`
 
-현재 화면은 `/api/notes`를 통해 Supabase의 가상 메모를 읽고, `/data.json`은 빈 `notes` 배열만 제공합니다. 서버 전용 Supabase 키는 Vercel 환경변수에서만 읽으며 브라우저 파일·응답·로그·Git에는 넣지 않습니다. `/api/notes`는 아직 비로그인 공개 주소라는 약점이 남아 있습니다.
+배포 후에는 `/`, `/api/notes`, `/data.json`, `/aleph.json`을 확인합니다.
 
-다시 확인할 때는 Vercel 환경변수 두 개가 등록된 상태에서 최신 `main`을 배포하고 `/`, `/data.json`, `/api/notes`, `/aleph.json`을 확인합니다. 로컬 정적 빌드는 `npm run build -- --local`, 제출 묶음 점검은 `npm run bundle`로 실행합니다. 현재 Git 원격은 `https://github.com/cjw25/choi-bujang-secret-vault`이고 Production 주소는 `https://jeongwon-vault.vercel.app`으로 기록합니다.
+정상 결과:
+- `/` 화면에 서버 API에서 받은 가상 메모가 표시됩니다.
+- `/api/notes`는 학습용 가상 메모 JSON을 반환합니다.
+- `/data.json`의 `notes`는 0건입니다.
+- `/aleph.json`이 열리고 `step`이 `2`입니다.
+- 첫 화면 응답에 `X-Content-Type-Options: nosniff`가 있습니다.
 
-## 3단계 저장점 — 진짜 로그인을 붙입니다
-
-- Supabase Auth의 이메일·비밀번호 로그인과 로그아웃을 공식 SDK 흐름으로 사용합니다. 비밀번호나 JWT를 코드에서 직접 만들거나 저장하지 않습니다.
-- 자료 API는 `src/verify-login.mjs`로 `Authorization: Bearer ...` 토큰을 검사하며, 비로그인 또는 검증 실패 요청에는 자료 없이 JSON 오류를 반환합니다.
-- `GET /api/notes`는 서버가 확인한 사용자 ID의 메모 목록만 돌려주고, `POST /api/notes`는 그 사용자 ID를 `owner_id`로 저장합니다.
-- `GET·PUT·DELETE /api/notes/:id`는 로그인 여부만 확인하고 아직 소유자 일치 검사를 하지 않습니다. 다른 로그인 사용자가 UUID를 알면 접근할 수 있는 허점은 4단계에서 고칩니다.
-- 허용 경로는 `GET /api/notes`, `POST /api/notes`, `GET /api/notes/:id`, `PUT /api/notes/:id`, `DELETE /api/notes/:id`입니다.
-
-### 3단계 직접 확인 기록
-
-- 비로그인 `GET /api/notes`가 JSON 오류와 함께 거부되는 것을 Production에서 직접 확인했습니다.
-- A 테스트 로그인 후 메모 추가·수정·삭제가 화면에서 정상 동작하는 것을 직접 확인했습니다.
-- 삭제한 UUID를 다시 `GET /api/notes/:id`로 요청했을 때의 404는 아직 직접 확인하지 않았으므로 미확인으로 남깁니다.
-- `public/aleph.json` 생성 흐름은 빌드 스크립트에 유지되어 있습니다. 최신 저장점 배포 뒤 `/aleph.json`이 열리는지는 다시 직접 확인합니다.
-- `vercel.json`은 첫 화면을 포함한 응답에 `X-Content-Type-Options: nosniff`를 붙이도록 설정합니다. 최신 저장점 배포 뒤 실제 응답 헤더를 다시 확인합니다.
-
-### 3단계 다시 실행
-
-Vercel의 Supabase 서버 환경변수는 그대로 유지하고 최신 `main`을 배포합니다. 시크릿 창에서 `/api/notes`가 401 또는 403 JSON 오류로 거부되는지 확인하고, A 로그인 뒤 목록·추가·수정·삭제가 동작하는지 확인합니다. `/aleph.json`과 첫 화면의 보안 헤더도 확인합니다. 로컬 빌드는 `npm run build -- --local`, 제출 묶음은 `npm run bundle`로 생성합니다. 현재 Production 주소는 `https://jeongwon-vault.vercel.app`입니다.
+2단계에서는 `/api/notes`가 비로그인 요청에도 열려 있는 것이 현재 남은 약점이며, 3단계에서 로그인 검증을 추가합니다.
