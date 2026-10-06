@@ -107,6 +107,51 @@
       SUPABASE_PUBLISHABLE_KEY
     );
 
+async function loadNotes(session) {
+  if (!session?.access_token) {
+    const item = document.createElement('li');
+    item.textContent = '로그인 후 자료를 볼 수 있습니다.';
+    list.replaceChildren(item);
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/notes', {
+      cache: 'no-store',
+      headers: {
+        Authorization: `Bearer ${session.access_token}`
+      }
+    });
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || '자료를 읽을 수 없습니다.');
+    }
+
+    const data = await response.json();
+
+    if (!Array.isArray(data.notes)) {
+      throw new Error('자료 형식이 맞지 않습니다.');
+    }
+
+    list.replaceChildren(...data.notes.map(note => {
+      const item = document.createElement('li');
+      const title = document.createElement('strong');
+      const content = document.createElement('span');
+
+      title.textContent = note.title;
+      content.textContent = note.content;
+
+      item.append(title, content);
+      return item;
+    }));
+  } catch (error) {
+    const item = document.createElement('li');
+    item.textContent = error.message;
+    list.replaceChildren(item);
+  }
+}
+
     function showSession(session) {
       const loggedIn = Boolean(session);
 
@@ -120,6 +165,8 @@
         authMessage.textContent = '';
         authMessage.classList.remove('ok');
       }
+
+void loadNotes(session);
     }
 
     const {
@@ -166,36 +213,6 @@
         authMessage.classList.remove('ok');
       }
     });
-
-    try {
-      const response = await fetch('/api/notes', { cache: 'no-store' });
-
-      if (!response.ok) {
-        throw new Error('자료를 읽을 수 없습니다.');
-      }
-
-      const data = await response.json();
-
-      if (!Array.isArray(data.notes)) {
-        throw new Error('자료 형식이 맞지 않습니다.');
-      }
-
-      list.replaceChildren(...data.notes.map(note => {
-        const item = document.createElement('li');
-        const title = document.createElement('strong');
-        const content = document.createElement('span');
-
-        title.textContent = note.title;
-        content.textContent = note.content;
-
-        item.append(title, content);
-        return item;
-      }));
-    } catch (error) {
-      const item = document.createElement('li');
-      item.textContent = error.message;
-      list.replaceChildren(item);
-    }
   </script>
 </body>
 </html>

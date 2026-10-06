@@ -1,10 +1,25 @@
 import { createClient } from '@supabase/supabase-js';
+import config from '../aleph.config.json' with { type: 'json' };
+import { createLoginVerifier } from '../src/verify-login.mjs';
+
+let verifyLoginAuthorization = null;
 
 function sendJson(response, status, body) {
   response.status(status);
   response.setHeader('Content-Type', 'application/json; charset=utf-8');
   response.setHeader('Cache-Control', 'no-store');
   return response.json(body);
+}
+
+function getLoginVerifier(supabaseSecretKey) {
+  if (!verifyLoginAuthorization) {
+    verifyLoginAuthorization = createLoginVerifier({
+      config,
+      supabaseSecretKey,
+    });
+  }
+
+  return verifyLoginAuthorization;
 }
 
 export default async function handler(request, response) {
@@ -18,6 +33,19 @@ export default async function handler(request, response) {
 
   if (!supabaseUrl || !supabaseSecretKey) {
     return sendJson(response, 500, { error: '자료 저장소 설정이 필요합니다.' });
+  }
+
+  let login;
+
+  try {
+    const verify = getLoginVerifier(supabaseSecretKey);
+    login = await verify(request.headers.authorization);
+  } catch {
+    return sendJson(response, 500, { error: '로그인 검증 설정을 확인해 주세요.' });
+  }
+
+  if (!login) {
+    return sendJson(response, 401, { error: '로그인이 필요합니다.' });
   }
 
   const supabase = createClient(supabaseUrl, supabaseSecretKey, {
