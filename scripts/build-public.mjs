@@ -7,13 +7,13 @@ const source = resolve(root, 'data.json');
 const output = resolve(root, 'public', 'data.json');
 const config = JSON.parse(await readFile(resolve(root, 'aleph.config.json'), 'utf8'));
 
-if (![2, 3].includes(config.step)) {
-  throw new Error('현재 빌드 흐름은 2~3단계 자료 분리·로그인에 맞춰져 있습니다.');
+if (![2, 3, 4].includes(config.step)) {
+  throw new Error('현재 빌드 흐름은 2~4단계 자료 분리·로그인·소유자 보호에 맞춰져 있습니다.');
 }
 
 const data = JSON.parse(await readFile(source, 'utf8'));
 if (!Array.isArray(data.notes) || data.notes.length !== 0) {
-  throw new Error('2~3단계에서는 공개 data.json에 메모를 남기지 마세요.');
+  throw new Error('2~4단계에서는 공개 data.json에 메모를 남기지 마세요.');
 }
 
 await mkdir(resolve(root, 'public'), { recursive: true });

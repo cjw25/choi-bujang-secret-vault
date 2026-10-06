@@ -115,3 +115,59 @@ Vercel Production 환경에는 `SUPABASE_URL`, `SUPABASE_SECRET_KEY`를 서버 �
 이 문제는 4단계 「로그인해도 내 자료만 보이게 합니다」에서 개별 메모 요청에도
 `owner_id = login.userId` 조건을 추가하여 막습니다.
 
+
+
+## 4단계 저장점 — 로그인해도 내 자료만 보이게 합니다
+
+- 로그인하지 않은 사용자는 `/api/notes`와 개별 메모 API를 사용할 수 없습니다.
+- 메모 목록 조회는 `owner_id = login.userId` 조건으로 로그인 사용자의 메모만 반환합니다.
+- 새 메모는 서버가 검증한 로그인 사용자 ID를 `owner_id`로 저장합니다.
+- 개별 메모 조회·수정·삭제도 `public_id`와 `owner_id = login.userId`를 함께 확인합니다.
+- 다른 사용자의 메모 UUID를 알고 있어도 조회·수정·삭제할 수 없으며 메모를 찾을 수 없는 것처럼 처리합니다.
+- 정적 `data.json`과 `public/data.json`에는 메모를 저장하지 않습니다.
+- 기존 로그인, 메모 추가·수정·삭제 기능과 보안 헤더를 그대로 유지합니다.
+
+### 4단계 설정
+
+- 단계: `4`
+- Git 저장소: `https://github.com/cjw25/choi-bujang-secret-vault`
+- Production: `https://jeongwon-vault.vercel.app`
+- 로그인 발급자: `https://zjugvqxssegtpiqfncbw.supabase.co/auth/v1`
+- 로그인 audience: `authenticated`
+- 허용 경로:
+  - `GET /api/notes`
+  - `POST /api/notes`
+  - `GET /api/notes/:id`
+  - `PUT /api/notes/:id`
+  - `DELETE /api/notes/:id`
+- 원본 API 주소: 해당 없음
+
+### 4단계 접근 제어
+
+정상 요청:
+
+- 사용자 A가 로그인하면 A 소유 메모 목록만 조회됩니다.
+- A가 자신의 메모 UUID로 GET, PUT, DELETE를 요청하면 허용됩니다.
+- 사용자 B도 자신의 메모만 조회·수정·삭제할 수 있습니다.
+
+거부되어야 할 요청:
+
+- 비로그인 사용자의 메모 API 요청은 `401`로 거부됩니다.
+- A가 B 소유 메모 UUID로 GET, PUT, DELETE를 요청하면 `404`로 처리됩니다.
+- B가 A 소유 메모 UUID로 요청해도 동일하게 거부됩니다.
+
+### 다시 확인
+
+로컬 빌드:
+
+`npm run build -- --local`
+
+배포 후 확인:
+
+- `/aleph.json`의 `step`이 `4`입니다.
+- 비로그인 `GET /api/notes`는 `401`입니다.
+- 로그인한 사용자는 자기 메모만 목록에서 볼 수 있습니다.
+- 다른 사용자의 메모 UUID를 직접 요청해도 조회·수정·삭제할 수 없습니다.
+- `/data.json`의 `notes`는 0건입니다.
+- 첫 화면 응답에 `X-Content-Type-Options: nosniff`가 있습니다.
+

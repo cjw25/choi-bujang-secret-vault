@@ -1,21 +1,21 @@
 {
-  "step": 3,
+  "step": 4,
   "repoUrl": "https://github.com/cjw25/choi-bujang-secret-vault",
   "publicAppUrl": "https://jeongwon-vault.vercel.app",
   "sampleMarker": "SAMPLE_NOTE_1",
   "judgeIssuer": "https://aleph-judge-production.up.railway.app/defense/judge",
   "identityProvider": {
-  "issuer": "https://zjugvqxssegtpiqfncbw.supabase.co/auth/v1",
-  "jwksUrl": "https://zjugvqxssegtpiqfncbw.supabase.co/auth/v1/.well-known/jwks.json",
-  "audience": "authenticated"
-},
+    "issuer": "https://zjugvqxssegtpiqfncbw.supabase.co/auth/v1",
+    "jwksUrl": "https://zjugvqxssegtpiqfncbw.supabase.co/auth/v1/.well-known/jwks.json",
+    "audience": "authenticated"
+  },
   "allowedRoutes": [
-  "GET /api/notes",
-  "POST /api/notes",
-  "GET /api/notes/:id",
-  "PUT /api/notes/:id",
-  "DELETE /api/notes/:id"
-],
+    "GET /api/notes",
+    "POST /api/notes",
+    "GET /api/notes/:id",
+    "PUT /api/notes/:id",
+    "DELETE /api/notes/:id"
+  ],
   "originalApiUrl": null,
   "restoreRoute": null
 }

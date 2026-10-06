@@ -110,6 +110,7 @@ export default async function handler(request, response) {
       .from('notes')
       .select('public_id, title, content')
       .eq('public_id', id)
+      .eq('owner_id', login.userId)
       .maybeSingle();
 
     if (error) {
@@ -155,6 +156,7 @@ export default async function handler(request, response) {
         content: body.body,
       })
       .eq('public_id', id)
+      .eq('owner_id', login.userId)
       .select('public_id, title, content')
       .maybeSingle();
 
@@ -181,6 +183,7 @@ export default async function handler(request, response) {
     .from('notes')
     .delete()
     .eq('public_id', id)
+      .eq('owner_id', login.userId)
     .select('public_id')
     .maybeSingle();
 
