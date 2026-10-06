@@ -57,4 +57,4 @@ Vercel 프로젝트의 Environment Variables에 `SUPABASE_URL`, `SUPABASE_SECRET
 
 현재 화면은 `/api/notes`를 통해 Supabase의 가상 메모를 읽고, `/data.json`은 빈 `notes` 배열만 제공합니다. 서버 전용 Supabase 키는 Vercel 환경변수에서만 읽으며 브라우저 파일·응답·로그·Git에는 넣지 않습니다. `/api/notes`는 아직 비로그인 공개 주소라는 약점이 남아 있습니다.
 
-다시 확인할 때는 Vercel 환경변수 두 개가 등록된 상태에서 최신 `main`을 배포하고 `/`, `/data.json`, `/api/notes`, `/aleph.json`을 확인합니다. 로컬 정적 빌드는 `npm run build -- --local`, 제출 묶음 점검은 `npm run bundle`로 실행합니다. 현재 Git 원격은 `https://github.com/cjw25/choi-bujang-secret-vault`이고 Production 주소는 `https://choi-bujang-secret-vault-edlc.vercel.app`으로 기록합니다.
+다시 확인할 때는 Vercel 환경변수 두 개가 등록된 상태에서 최신 `main`을 배포하고 `/`, `/data.json`, `/api/notes`, `/aleph.json`을 확인합니다. 로컬 정적 빌드는 `npm run build -- --local`, 제출 묶음 점검은 `npm run bundle`로 실행합니다. 현재 Git 원격은 `https://github.com/cjw25/choi-bujang-secret-vault`이고 Production 주소는 `https://jeongwon-vault.vercel.app`으로 기록합니다.
