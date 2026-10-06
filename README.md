@@ -52,3 +52,9 @@ Vercel 프로젝트의 Environment Variables에 `SUPABASE_URL`, `SUPABASE_SECRET
 - **현재 Production 정적 파일:** 최신 커밋이 Production에 재배포된 뒤 위 절차로 직접 확인하고, 네 본문 모두 0건인지 기록합니다. 재배포·검색을 실제로 하지 않았다면 `미확인`으로 남깁니다.
 - **공개 API의 남은 약점:** `/api/notes`는 아직 인증이 없으므로 비로그인 호출로 가상 메모 네 건을 읽을 수 있습니다. 자료가 코드 밖으로 이동했지만 접근 통제까지 완료된 것은 아닙니다.
 - **과거 노출 상태:** 1단계 공개 메모가 들어 있던 이전 공개 커밋과 그 커밋을 사용한 옛 Vercel 배포가 접근 가능한 동안에는 **“과거 노출이 해소됐다”라고 기록하지 않습니다.** 현재 버전에서 정적 노출을 제거했다는 사실과 과거 공개 이력을 분리해서 기록합니다.
+
+## 2단계 저장점
+
+현재 화면은 `/api/notes`를 통해 Supabase의 가상 메모를 읽고, `/data.json`은 빈 `notes` 배열만 제공합니다. 서버 전용 Supabase 키는 Vercel 환경변수에서만 읽으며 브라우저 파일·응답·로그·Git에는 넣지 않습니다. `/api/notes`는 아직 비로그인 공개 주소라는 약점이 남아 있습니다.
+
+다시 확인할 때는 Vercel 환경변수 두 개가 등록된 상태에서 최신 `main`을 배포하고 `/`, `/data.json`, `/api/notes`, `/aleph.json`을 확인합니다. 로컬 정적 빌드는 `npm run build -- --local`, 제출 묶음 점검은 `npm run bundle`로 실행합니다. 현재 Git 원격은 `https://github.com/cjw25/choi-bujang-secret-vault`이고 Production 주소는 `https://choi-bujang-secret-vault-edlc.vercel.app`으로 기록합니다.
