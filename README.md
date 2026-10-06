@@ -171,3 +171,45 @@ Vercel Production 환경에는 `SUPABASE_URL`, `SUPABASE_SECRET_KEY`를 서버 �
 - `/data.json`의 `notes`는 0건입니다.
 - 첫 화면 응답에 `X-Content-Type-Options: nosniff`가 있습니다.
 
+## 5단계 저장점 — 자료 요청을 서버 한곳으로 모읍니다
+
+- 브라우저의 메모 읽기·추가·수정·삭제는 모두 `/api/notes` 서버 함수로만 처리합니다.
+- 브라우저에서 Supabase 공개 키와 직접 데이터 저장소 호출을 제거했습니다.
+- 로그인은 `POST /api/auth/login` 서버 함수를 거쳐 처리하며 서버 전용 Supabase 설정은 브라우저에 노출하지 않습니다.
+- 학습 DB의 `public.notes`에서 `PUBLIC`, `anon`, `authenticated` 직접 테이블 권한을 회수한 상태를 확인했습니다.
+- 기존 서버 함수의 로그인 검증과 `owner_id` 소유자 검사는 그대로 유지합니다.
+- 정적 `data.json`과 `public/data.json`에는 메모를 저장하지 않습니다.
+- 첫 화면의 `X-Content-Type-Options: nosniff` 보안 헤더를 유지합니다.
+
+### 5단계 설정
+
+- 단계: `5`
+- Git 저장소: `https://github.com/cjw25/choi-bujang-secret-vault`
+- Production: `https://jeongwon-vault.vercel.app`
+- 로그인 발급자: `https://zjugvqxssegtpiqfncbw.supabase.co/auth/v1`
+- 로그인 audience: `authenticated`
+- 원본 자료 API: `https://zjugvqxssegtpiqfncbw.supabase.co/rest/v1/notes`
+- 허용 경로:
+  - `POST /api/auth/login`
+  - `GET /api/notes`
+  - `POST /api/notes`
+  - `GET /api/notes/:id`
+  - `PUT /api/notes/:id`
+  - `DELETE /api/notes/:id`
+
+Vercel Production 환경의 `SUPABASE_URL`, `SUPABASE_SECRET_KEY`는 계속 서버에서만 사용합니다. 실제 값은 코드, README, Git에 기록하지 않습니다.
+
+### 다시 확인
+
+로컬 빌드:
+
+`npm run build -- --local`
+
+배포 후 확인:
+
+- A 계정 로그인 후 자기 메모 읽기·추가·수정·삭제가 유지됩니다.
+- 비로그인 `GET /api/notes`는 JSON 오류와 함께 `401` 또는 `403`입니다.
+- `/aleph.json`의 `step`은 `5`이고 `allowedRoutes`가 비어 있지 않습니다.
+- 첫 화면 응답에 `X-Content-Type-Options: nosniff`가 있습니다.
+- 첫 화면 소스에는 `sb_publishable_...` 또는 anon JWT가 없습니다.
+- 원본 자료 HTTPS 경로는 직접 권한이 없어야 하며 운영 심판이 anon 키로 확인합니다.
