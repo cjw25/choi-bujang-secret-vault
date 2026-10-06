@@ -61,3 +61,57 @@ Vercel Production 환경에는 `SUPABASE_URL`, `SUPABASE_SECRET_KEY`를 직접 �
 - 첫 화면 응답에 `X-Content-Type-Options: nosniff`가 있습니다.
 
 2단계에서는 `/api/notes`가 비로그인 요청에도 열려 있는 것이 현재 남은 약점이며, 3단계에서 로그인 검증을 추가합니다.
+
+## 3단계 저장점 — 로그인해야 자료를 볼 수 있습니다
+
+- Supabase Auth 이메일·비밀번호 로그인을 사용합니다.
+- 로그인하지 않은 사용자가 `/api/notes`를 호출하면 `401`과 `{"error":"로그인이 필요합니다."}`를 반환합니다.
+- 브라우저는 로그인 세션의 access token을 `Authorization: Bearer ...` 헤더로 서버 함수에 전달합니다.
+- 로그인 사용자는 메모 목록 조회, 추가, 수정, 삭제 기능을 사용할 수 있습니다.
+- 새 메모의 `owner_id`는 브라우저가 보내는 값이 아니라 서버가 검증한 로그인 사용자 ID로 저장합니다.
+- 메모 목록 조회는 `owner_id = login.userId` 조건으로 로그인 사용자의 자료만 반환합니다.
+- 정적 `data.json`과 `public/data.json`에는 메모를 저장하지 않습니다.
+- 첫 화면 응답에는 `X-Content-Type-Options: nosniff` 보안 헤더를 유지합니다.
+
+### 3단계 설정
+
+- 단계: `3`
+- Git 저장소: `https://github.com/cjw25/choi-bujang-secret-vault`
+- Production: `https://jeongwon-vault.vercel.app`
+- 로그인 발급자: `https://zjugvqxssegtpiqfncbw.supabase.co/auth/v1`
+- 로그인 audience: `authenticated`
+- 허용 경로:
+  - `GET /api/notes`
+  - `POST /api/notes`
+  - `GET /api/notes/:id`
+  - `PUT /api/notes/:id`
+  - `DELETE /api/notes/:id`
+- 원본 API 주소: 해당 없음
+
+Vercel Production 환경에는 `SUPABASE_URL`, `SUPABASE_SECRET_KEY`를 서버 환경변수로 등록합니다. 실제 값은 코드, README, Git에 기록하지 않습니다.
+
+### 다시 확인
+
+로컬 정적 빌드:
+
+`npm run build -- --local`
+
+배포 후 확인:
+
+- `/aleph.json`이 열리고 `step`이 `3`입니다.
+- 비로그인 `GET /api/notes`는 `401`을 반환합니다.
+- 로그인 후 메모 목록을 볼 수 있습니다.
+- 로그인 후 메모 추가·수정·삭제가 가능합니다.
+- `/data.json`의 `notes`는 0건입니다.
+- 첫 화면 응답에 `X-Content-Type-Options: nosniff`가 있습니다.
+
+### 3단계에 남아 있는 약점
+
+목록 조회와 새 메모 작성은 로그인 사용자의 `owner_id`를 사용하지만,
+개별 메모 `GET /api/notes/:id`, `PUT /api/notes/:id`, `DELETE /api/notes/:id`는 아직 `public_id`만 확인합니다.
+
+따라서 다른 사용자의 메모 UUID를 알고 있다면 로그인한 상태에서 다른 사용자의 메모를 조회·수정·삭제할 가능성이 남아 있습니다.
+
+이 문제는 4단계 「로그인해도 내 자료만 보이게 합니다」에서 개별 메모 요청에도
+`owner_id = login.userId` 조건을 추가하여 막습니다.
+
