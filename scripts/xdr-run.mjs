@@ -51,9 +51,13 @@ export async function runXdr({ root, moduleKey, writeError = (line) => console.e
     counts[action] += 1;
   }
 
-  if (moduleKey === 'brute-force' && typeof loaded.writeIntegrationArtifacts === 'function') {
-    await loaded.writeIntegrationArtifacts({ root, alerts: fixture.alerts, decisions });
+  if (moduleKey === 'brute-force') {
+    const integration = await import(pathToFileURL(join(root, 'xdr', moduleKey, 'ztna-gate.mjs')).href);
+    if (typeof integration.writeIntegrationArtifacts === 'function') {
+      await integration.writeIntegrationArtifacts({ root, alerts: fixture.alerts, decisions });
+    }
   }
+
   const result = { schema: 'aleph.xdr.result.v1', moduleKey, decisions, counts };
   const outDir = join(root, 'xdr', moduleKey);
   await mkdir(outDir, { recursive: true });
