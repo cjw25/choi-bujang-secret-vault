@@ -29,8 +29,8 @@
     {
       "alertId": "bf-05",
       "action": "block",
-      "confidence": 0.91,
-      "reason": "regular_multi_account_failures"
+      "confidence": 0.96,
+      "reason": "rapid_source_login_failures"
     },
     {
       "alertId": "bf-06",
@@ -41,14 +41,14 @@
     {
       "alertId": "bf-07",
       "action": "block",
-      "confidence": 0.9,
-      "reason": "iterative_password_guessing"
+      "confidence": 0.96,
+      "reason": "rapid_source_login_failures"
     },
     {
       "alertId": "bf-08",
       "action": "block",
-      "confidence": 0.88,
-      "reason": "sustained_failed_login_streak"
+      "confidence": 0.96,
+      "reason": "rapid_source_login_failures"
     },
     {
       "alertId": "bf-09",
@@ -59,8 +59,8 @@
     {
       "alertId": "bf-10",
       "action": "block",
-      "confidence": 0.88,
-      "reason": "sustained_failed_login_streak"
+      "confidence": 0.96,
+      "reason": "rapid_source_login_failures"
     },
     {
       "alertId": "bf-11",
