@@ -114,12 +114,7 @@ function matchStrongPattern(alert) {
   }
   if (!isFailureDescription(text)) return null;
 
-  const windows = [...text.matchAll(/(\d{1,3})\s*(초|분|시간|seconds?|secs?|minutes?|mins?|hours?)/giu)]
-    .map((m) => /초|sec/iu.test(m[2]) ? Number(m[1]) / 60
-      : /시간|hour/iu.test(m[2]) ? Number(m[1]) * 60 : Number(m[1]));
-  const shortWindow = windows.some((value) => value > 0 && value <= 10);
   const sameSource = /(?:같은|동일(?:한)?)\s*(?:주소|IP)|한\s*주소|same\s*(?:IP|source|address)|from\s+(?:one|the\s+same)\s*(?:IP|source|address)/iu.test(text);
-  const sameAccount = /(?:같은|동일(?:한)?)\s*(?:계정|사용자)|한\s*계정|same\s*(?:account|user)/iu.test(text);
   const spray = /같은\s*비밀번호|동일한?\s*비밀번호|same\s+password|identical\s+password|password\s*spray/iu.test(text)
     && /여러\s*계정|서로\s*다른\s*계정|계정\s*\d+\s*개|(?:multiple|different)\s+(?:accounts?|users?)/iu.test(text);
   const regular = /같은\s*간격|일정한\s*간격|regular\s+intervals?/iu.test(text)
@@ -146,14 +141,9 @@ function matchStrongPattern(alert) {
     && (tagged || row.ruleLevel >= PATTERNS.sustained_failed_login_streak.minRuleLevel)) {
     return { name: 'sustained_failed_login_streak', confidence: PATTERNS.sustained_failed_login_streak.confidence };
   }
-  if (count >= PATTERNS.short_window_same_account_failures.minFailures
-    && shortWindow && sameAccount && tagged) {
-    return { name: 'short_window_same_account_failures', confidence: PATTERNS.short_window_same_account_failures.confidence };
-  }
-  if (count >= PATTERNS.repeated_same_source_failures.minFailures
-    && sameSource && tagged && row.ruleLevel >= PATTERNS.repeated_same_source_failures.minRuleLevel) {
-    return { name: 'repeated_same_source_failures', confidence: PATTERNS.repeated_same_source_failures.confidence };
-  }
+
+  // 5~8회의 반복 실패는 조사 신호지만 자동 차단에는 근거가 부족합니다.
+  // strong 으로 올리지 않고 아래 ambiguous 경로에서 alert 로만 남깁니다.
   return null;
 }
 
