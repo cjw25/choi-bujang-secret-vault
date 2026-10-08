@@ -47,8 +47,15 @@ export function failureCount(alert) {
 }
 
 export function hasT1110(alert) {
-  return Array.isArray(alert?.rule?.mitre)
-    && alert.rule.mitre.some((id) => id === 'T1110' || /^T1110\.\d{3}$/.test(id));
+  const mitre = alert?.rule?.mitre;
+  const ids = Array.isArray(mitre)
+    ? mitre
+    : Array.isArray(mitre?.id)
+      ? mitre.id
+      : typeof mitre?.id === 'string'
+        ? [mitre.id]
+        : [];
+  return ids.some((id) => id === 'T1110' || /^T1110\.\d{3}$/.test(id));
 }
 
 export function isFailureDescription(text) {
@@ -60,13 +67,20 @@ export function matchStrongPattern(alert) {
   const text = row.description;
   const count = failureCount(alert);
   const tagged = hasT1110(alert);
-  if (!row.at || !row.sourceAddress || !row.account || row.ruleLevel === null
-    || !isFailureDescription(text)) return null;
+  if (!row.at || !row.sourceAddress || !row.account || row.ruleLevel === null) return null;
 
   const withoutNoSuccess = text.replace(
     /성공(?:은|이)?\s*없(?:습니다|었(?:습니다)?|다)?|성공\s*없음|no\s+success(?:ful(?:\s+logins?)?)?|zero\s+successful\s+logins?/giu, '',
   );
   if (/(?:뒤에|후에|이후)\s*성공|성공했|성공했습니다|로그인이\s*성공|변경이\s*성공|(?:login|sign[\s-]?in)\s*success|successfully\s+logged/iu.test(withoutNoSuccess)) return null;
+
+  const rapid = patternByName.get('rapid_source_login_failures');
+  if (rapid && tagged && row.ruleLevel >= rapid.condition.minRuleLevel
+    && count >= rapid.condition.minFailures) {
+    return { name: rapid.name, confidence: rapid.confidence };
+  }
+
+  if (!isFailureDescription(text)) return null;
 
   const windows = [...text.matchAll(/(\d{1,3})\s*(초|분|시간|seconds?|secs?|minutes?|mins?|hours?)/giu)]
     .map(m => /초|sec/iu.test(m[2]) ? Number(m[1]) / 60
