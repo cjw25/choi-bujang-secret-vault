@@ -213,3 +213,20 @@ Vercel Production 환경의 `SUPABASE_URL`, `SUPABASE_SECRET_KEY`는 계속 서�
 - 첫 화면 응답에 `X-Content-Type-Options: nosniff`가 있습니다.
 - 첫 화면 소스에는 `sb_publishable_...` 또는 anon JWT가 없습니다.
 - 원본 자료 HTTPS 경로는 직접 권한이 없어야 하며 운영 심판이 anon 키로 확인합니다.
+
+## 보너스 xdr-01 저장점 — 무차별 로그인 공격을 잡아 냅니다
+
+- `xdr/fixtures/brute-force.json`의 가상 Wazuh 경보 28건을 읽고 시각·출발 주소·계정·규칙 수준·설명 5개 필드만 추출합니다. 비밀번호·토큰·키처럼 보이는 값은 설명에서 마스킹합니다.
+- `xdr/brute-force/patterns.json`은 MITRE ATT&CK T1110을 근거로 단시간 반복 로그인 실패와 여러 계정 대상 password spraying을 포함한 패턴과 한 줄 근거를 기록합니다.
+- `xdr/brute-force/decide.mjs`의 `decide(alert)`는 명확한 패턴을 `block`, 애매한 실패를 Jev 검토 경로의 `alert`, 정상 이벤트를 `record`로 나눕니다. Jev 미응답 시 애매한 건은 `alert` 0.65로 유지합니다.
+- 차단 후보는 기존 `src/decider.mjs`의 `RULE_IDS`를 고치지 않고 `xdr/brute-force/deny-rules.json`에 별도 추가 규칙 후보로 기록합니다. 각 후보에는 만료 시각과 근거 경보 번호가 있습니다.
+- 알림은 `xdr/alerts.log`에 비밀값 없이 한 줄 JSON으로 누적합니다. 서버가 검증한 출발 주소·계정 문맥이 없으면 추가 거부 규칙을 적용하지 않습니다.
+- 시험 결과는 `block 12`, `alert 7`, `record 9`이며 정상 이벤트 9건은 모두 `record`이고 차단된 정상 이벤트는 없습니다.
+
+다시 실행:
+
+`npm run xdr:run -- brute-force`
+
+정상 결과:
+
+`block=12 alert=7 record=9`
