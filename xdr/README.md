@@ -2,10 +2,29 @@
 
 `xdr/fixtures/`의 가상 Wazuh 경보를 읽어 보너스 탐지 모듈을 시험합니다.
 
-현재 구현 모듈은 `brute-force`입니다.
+현재 구현 모듈은 `brute-force`, `web-injection`입니다.
 
 ```bat
 npm run xdr:run -- brute-force
+npm run xdr:run -- web-injection
 ```
 
-실행하면 `xdr/brute-force/result.json`을 갱신합니다. 명확한 공격의 추가 거부 후보는 기존 `src/decider.mjs` 규칙을 수정하지 않고 `xdr/brute-force/deny-rules.json`에 별도로 기록합니다. 각 후보에는 만료 시각과 근거 경보 번호가 들어갑니다. `block`과 `alert` 결과는 비밀값 없이 `xdr/alerts.log`에 한 줄 JSON으로 누적합니다.
+`brute-force`는 무차별 로그인 공격을, `web-injection`은 SQL 주입·스크립트 주입·경로 이탈·명령 삽입 형태를 MITRE ATT&CK 근거와 함께 분류합니다.
+
+`web-injection`의 `decide.mjs`는 import 없이 독립 실행되며, 명확한 반복 T1190 경보만 `block`, 애매한 단일·약한 경보는 `alert`, 정상 이벤트는 `record`로 돌려줍니다. 로컬 시험 기준 분포는 `block=8 alert=9 record=9`이며 정상 이벤트 block은 0건입니다.
+
+차단 후보는 기존 `src/decider.mjs` 규칙을 수정하지 않고 각 모듈의 `deny-rules.json`에 별도로 기록합니다. 후보에는 만료 시각과 근거 경보 번호가 들어가며, 기존 ZTNA 판정이 `allow`일 때 서버가 검증한 출발 주소만 추가 확인합니다. 기존 `deny` 또는 `step_up` 판정은 완화하지 않습니다.
+
+`block`과 `alert` 결과는 비밀값 없이 `xdr/alerts.log`에 한 줄 JSON으로 기록합니다. `web-injection` 재실행 시 해당 모듈의 이전 로그는 현재 판단 결과로 교체되어 과거 잘못된 block/alert 중복을 남기지 않습니다.
+
+## web-injection 다시 확인
+
+```bat
+npm run xdr:run -- web-injection
+```
+
+정상 결과:
+
+```text
+block=8 alert=9 record=9
+```
