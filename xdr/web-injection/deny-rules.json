@@ -1,0 +1,85 @@
+{
+  "schema": "aleph.xdr.ztna-candidates.v1",
+  "mode": "simulation_only",
+  "note": "기존 ZTNA 판정 뒤에서 서버가 검증한 출발 주소만 추가 확인하는 웹 주입 임시 차단 후보입니다.",
+  "rules": [
+    {
+      "id": "xdr.web-injection.192-0-2-15",
+      "sourceAddress": "192.0.2.15",
+      "startsAt": "2026-09-27T01:02:11.000Z",
+      "expiresAt": "2026-09-27T01:17:11.000Z",
+      "evidenceAlertIds": [
+        "wi-04"
+      ],
+      "pattern": "sql-injection",
+      "confidence": 0.96
+    },
+    {
+      "id": "xdr.web-injection.192-0-2-21",
+      "sourceAddress": "192.0.2.21",
+      "startsAt": "2026-09-27T04:04:19.000Z",
+      "expiresAt": "2026-09-27T04:19:19.000Z",
+      "evidenceAlertIds": [
+        "wi-07"
+      ],
+      "pattern": "path-traversal",
+      "confidence": 0.96
+    },
+    {
+      "id": "xdr.web-injection.198-51-100-15",
+      "sourceAddress": "198.51.100.15",
+      "startsAt": "2026-09-27T00:16:04.000Z",
+      "expiresAt": "2026-09-27T00:31:04.000Z",
+      "evidenceAlertIds": [
+        "wi-03"
+      ],
+      "pattern": "path-traversal",
+      "confidence": 0.96
+    },
+    {
+      "id": "xdr.web-injection.198-51-100-18",
+      "sourceAddress": "198.51.100.18",
+      "startsAt": "2026-09-27T02:07:08.000Z",
+      "expiresAt": "2026-09-27T02:22:08.000Z",
+      "evidenceAlertIds": [
+        "wi-06"
+      ],
+      "pattern": "command-injection",
+      "confidence": 0.96
+    },
+    {
+      "id": "xdr.web-injection.203-0-113-10",
+      "sourceAddress": "203.0.113.10",
+      "startsAt": "2026-09-27T00:13:01.000Z",
+      "expiresAt": "2026-09-27T00:28:20.000Z",
+      "evidenceAlertIds": [
+        "wi-01",
+        "wi-02"
+      ],
+      "pattern": "sql-injection",
+      "confidence": 0.96
+    },
+    {
+      "id": "xdr.web-injection.203-0-113-18",
+      "sourceAddress": "203.0.113.18",
+      "startsAt": "2026-09-27T01:18:33.000Z",
+      "expiresAt": "2026-09-27T01:33:33.000Z",
+      "evidenceAlertIds": [
+        "wi-05"
+      ],
+      "pattern": "sql-injection",
+      "confidence": 0.96
+    },
+    {
+      "id": "xdr.web-injection.203-0-113-22",
+      "sourceAddress": "203.0.113.22",
+      "startsAt": "2026-09-27T05:26:02.000Z",
+      "expiresAt": "2026-09-27T05:41:02.000Z",
+      "evidenceAlertIds": [
+        "wi-08"
+      ],
+      "pattern": "sql-injection",
+      "confidence": 0.96
+    }
+  ]
+}
