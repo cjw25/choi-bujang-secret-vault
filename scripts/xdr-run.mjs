@@ -58,6 +58,13 @@ export async function runXdr({ root, moduleKey, writeError = (line) => console.e
     }
   }
 
+  if (moduleKey === 'web-injection') {
+    const responder = await import(pathToFileURL(join(root, 'xdr', moduleKey, 'respond.mjs')).href);
+    if (typeof responder.writeResponseArtifacts === 'function') {
+      await responder.writeResponseArtifacts({ root, alerts: fixture.alerts, decisions });
+    }
+  }
+
   const result = { schema: 'aleph.xdr.result.v1', moduleKey, decisions, counts };
   const outDir = join(root, 'xdr', moduleKey);
   await mkdir(outDir, { recursive: true });
