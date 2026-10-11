@@ -1,0 +1,22 @@
+[
+  {
+    "name": "sql-injection",
+    "condition": "같은 출발 주소에서 요청 인자의 SQL 구문·조회 연결·논리식이 반복됨",
+    "evidence": "MITRE ATT&CK T1190: 외부 공개 애플리케이션 입력 처리 취약점 악용에 해당합니다."
+  },
+  {
+    "name": "script-injection",
+    "condition": "같은 출발 주소에서 스크립트 태그·이벤트 실행 표식이 반복됨",
+    "evidence": "MITRE ATT&CK T1190: 외부 공개 애플리케이션 입력 처리 취약점 악용에 해당합니다."
+  },
+  {
+    "name": "path-traversal",
+    "condition": "같은 출발 주소에서 ../ 또는 인코딩된 상위 경로 이동이 여러 단계·여러 번 반복됨",
+    "evidence": "MITRE ATT&CK T1190: 외부 공개 애플리케이션 입력 처리 취약점 악용에 해당합니다."
+  },
+  {
+    "name": "command-injection",
+    "condition": "같은 출발 주소에서 명령 구분자·명령 삽입 표식이 반복됨",
+    "evidence": "MITRE ATT&CK T1190: 외부 공개 애플리케이션 입력 처리 취약점 악용에 해당합니다."
+  }
+]
