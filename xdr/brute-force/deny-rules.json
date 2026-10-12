@@ -1,23 +1,12 @@
 {
   "schema": "aleph.xdr.ztna-candidates.v1",
   "mode": "simulation_only",
-  "note": "기존 ZTNA 판정 뒤에서 서버가 검증한 출발 주소만 추가 확인하는 임시 차단 후보입니다.",
+  "note": "기존 ZTNA 판정 뒤에서 서버가 검증한 출발 주소만 추가 확인하는 무차별 로그인 임시 차단 후보입니다.",
   "rules": [
     {
-      "id": "xdr.t1110.140cc81db30fc9c9",
-      "sourceAddress": "198.51.100.20",
-      "startsAt": "2026-09-27T09:14:02+09:00",
-      "expiresAt": "2026-09-27T00:29:02.000Z",
-      "evidenceAlertIds": [
-        "bf-03"
-      ],
-      "pattern": "rapid_source_login_failures",
-      "confidence": 0.96
-    },
-    {
-      "id": "xdr.t1110.4b7d36a8e334799c",
+      "id": "xdr.brute-force.192-0-2-18",
       "sourceAddress": "192.0.2.18",
-      "startsAt": "2026-09-27T13:10:02+09:00",
+      "startsAt": "2026-09-27T04:10:02.000Z",
       "expiresAt": "2026-09-27T04:25:02.000Z",
       "evidenceAlertIds": [
         "bf-08"
@@ -26,9 +15,53 @@
       "confidence": 0.96
     },
     {
-      "id": "xdr.t1110.631f08140b24b727",
+      "id": "xdr.brute-force.192-0-2-30",
+      "sourceAddress": "192.0.2.30",
+      "startsAt": "2026-09-27T00:20:11.000Z",
+      "expiresAt": "2026-09-27T00:35:11.000Z",
+      "evidenceAlertIds": [
+        "bf-04"
+      ],
+      "pattern": "rapid_source_login_failures",
+      "confidence": 0.96
+    },
+    {
+      "id": "xdr.brute-force.198-51-100-20",
+      "sourceAddress": "198.51.100.20",
+      "startsAt": "2026-09-27T00:14:02.000Z",
+      "expiresAt": "2026-09-27T00:29:02.000Z",
+      "evidenceAlertIds": [
+        "bf-03"
+      ],
+      "pattern": "rapid_source_login_failures",
+      "confidence": 0.96
+    },
+    {
+      "id": "xdr.brute-force.198-51-100-44",
+      "sourceAddress": "198.51.100.44",
+      "startsAt": "2026-09-27T02:02:15.000Z",
+      "expiresAt": "2026-09-27T02:17:15.000Z",
+      "evidenceAlertIds": [
+        "bf-06"
+      ],
+      "pattern": "rapid_source_login_failures",
+      "confidence": 0.96
+    },
+    {
+      "id": "xdr.brute-force.198-51-100-8",
+      "sourceAddress": "198.51.100.8",
+      "startsAt": "2026-09-27T05:22:18.000Z",
+      "expiresAt": "2026-09-27T05:37:18.000Z",
+      "evidenceAlertIds": [
+        "bf-09"
+      ],
+      "pattern": "cross_account_password_spray",
+      "confidence": 0.97
+    },
+    {
+      "id": "xdr.brute-force.203-0-113-10",
       "sourceAddress": "203.0.113.10",
-      "startsAt": "2026-09-27T09:12:01+09:00",
+      "startsAt": "2026-09-27T00:12:01.000Z",
       "expiresAt": "2026-09-27T00:27:40.000Z",
       "evidenceAlertIds": [
         "bf-01",
@@ -38,20 +71,20 @@
       "confidence": 0.97
     },
     {
-      "id": "xdr.t1110.8e84592a1e015927",
-      "sourceAddress": "203.0.113.40",
-      "startsAt": "2026-09-27T15:40:01+09:00",
-      "expiresAt": "2026-09-27T06:55:01.000Z",
+      "id": "xdr.brute-force.203-0-113-15",
+      "sourceAddress": "203.0.113.15",
+      "startsAt": "2026-09-27T02:05:40.000Z",
+      "expiresAt": "2026-09-27T02:20:40.000Z",
       "evidenceAlertIds": [
-        "bf-10"
+        "bf-07"
       ],
       "pattern": "rapid_source_login_failures",
       "confidence": 0.96
     },
     {
-      "id": "xdr.t1110.9ec158a17a98fe09",
+      "id": "xdr.brute-force.203-0-113-21",
       "sourceAddress": "203.0.113.21",
-      "startsAt": "2026-09-27T09:21:00+09:00",
+      "startsAt": "2026-09-27T00:21:00.000Z",
       "expiresAt": "2026-09-27T00:36:00.000Z",
       "evidenceAlertIds": [
         "bf-05"
@@ -60,45 +93,12 @@
       "confidence": 0.96
     },
     {
-      "id": "xdr.t1110.a0c2b533f88e9b43",
-      "sourceAddress": "192.0.2.30",
-      "startsAt": "2026-09-27T09:20:11+09:00",
-      "expiresAt": "2026-09-27T00:35:11.000Z",
+      "id": "xdr.brute-force.203-0-113-40",
+      "sourceAddress": "203.0.113.40",
+      "startsAt": "2026-09-27T06:40:01.000Z",
+      "expiresAt": "2026-09-27T06:55:01.000Z",
       "evidenceAlertIds": [
-        "bf-04"
-      ],
-      "pattern": "rapid_source_login_failures",
-      "confidence": 0.96
-    },
-    {
-      "id": "xdr.t1110.b39c5c787cf1c5b2",
-      "sourceAddress": "198.51.100.44",
-      "startsAt": "2026-09-27T11:02:15+09:00",
-      "expiresAt": "2026-09-27T02:17:15.000Z",
-      "evidenceAlertIds": [
-        "bf-06"
-      ],
-      "pattern": "rapid_source_login_failures",
-      "confidence": 0.96
-    },
-    {
-      "id": "xdr.t1110.c53bee22afaf61cf",
-      "sourceAddress": "198.51.100.8",
-      "startsAt": "2026-09-27T14:22:18+09:00",
-      "expiresAt": "2026-09-27T05:37:18.000Z",
-      "evidenceAlertIds": [
-        "bf-09"
-      ],
-      "pattern": "cross_account_password_spray",
-      "confidence": 0.97
-    },
-    {
-      "id": "xdr.t1110.c74177bda5584327",
-      "sourceAddress": "203.0.113.15",
-      "startsAt": "2026-09-27T11:05:40+09:00",
-      "expiresAt": "2026-09-27T02:20:40.000Z",
-      "evidenceAlertIds": [
-        "bf-07"
+        "bf-10"
       ],
       "pattern": "rapid_source_login_failures",
       "confidence": 0.96
