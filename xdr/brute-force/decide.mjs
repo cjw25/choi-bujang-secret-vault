@@ -4,8 +4,6 @@ const PATTERNS = Object.freeze({
   regular_multi_account_failures: { minAccounts: 15, confidence: 0.91 },
   iterative_password_guessing: { minFailures: 30, minRuleLevel: 10, confidence: 0.9 },
   sustained_failed_login_streak: { minFailures: 50, minRuleLevel: 11, confidence: 0.88 },
-  short_window_same_account_failures: { minFailures: 5, confidence: 0.86 },
-  repeated_same_source_failures: { minFailures: 8, minRuleLevel: 8, confidence: 0.85 },
   review_login_failures: { minRuleLevel: 5, confidence: 0.65 },
 });
 
@@ -33,19 +31,6 @@ function isIpAddress(value) {
 }
 
 function extractAlert(alert) {
-  if (alert && Object.hasOwn(alert, 'sourceAddress')) {
-    const level = alert.ruleLevel;
-    return {
-      at: typeof alert.at === 'string' && Number.isFinite(Date.parse(alert.at)) ? alert.at : null,
-      sourceAddress: isIpAddress(alert.sourceAddress) ? alert.sourceAddress : null,
-      account: typeof alert.account === 'string'
-        && /^[a-z][a-z0-9._-]{0,47}$/i.test(alert.account)
-        && !/^(?:password|token|secret|apikey)/i.test(alert.account) ? alert.account : null,
-      ruleLevel: Number.isInteger(level) && level >= 0 && level <= 16 ? level : null,
-      description: sanitizeDescription(alert.description),
-    };
-  }
-
   const address = alert?.data?.srcip;
   const account = alert?.data?.srcuser;
   const level = alert?.rule?.level;
@@ -70,7 +55,7 @@ function failureCount(alert) {
     && /^\d{1,5}$/.test(String(value))).map(Number);
   if (numeric.length) return Math.max(...numeric);
 
-  const description = String(alert?.rule?.description ?? alert?.description ?? '');
+  const description = String(alert?.rule?.description ?? '');
   const expressions = [
     /(?:로그인|인증|비밀번호)?\s*실패(?:가|를|는|이)?\s*(\d{1,5})\s*(?:건|번|회)/giu,
     /(\d{1,5})\s*(?:건|번|회)\s*(?:로그인|인증)?\s*실패/giu,
@@ -89,11 +74,19 @@ function hasT1110(alert) {
       : typeof mitre?.id === 'string'
         ? [mitre.id]
         : [];
-  return ids.some((id) => id === 'T1110' || /^T1110\.\d{3}$/.test(id));
+  return ids.some((id) => typeof id === 'string' && /^T1110(?:\.\d{3})?$/.test(id));
 }
 
 function isFailureDescription(text) {
   return /실패|같은 비밀번호.*(?:넣었|시도)|비밀번호.*(?:바꿔|추측)|failed\s*(?:login|sign[- ]?in|authentication|password|attempts?)|(?:login|authentication)\s*fail|password\s*(?:guess|spray)/iu.test(text);
+}
+
+function containsSuccess(text) {
+  const withoutNoSuccess = text.replace(
+    /성공(?:은|이)?\s*없(?:습니다|었(?:습니다)?|다)?|성공\s*없음|no\s+success(?:ful(?:\s+logins?)?)?|zero\s+successful\s+logins?/giu,
+    '',
+  );
+  return /(?:뒤에|후에|이후)\s*성공|성공했|성공했습니다|로그인이\s*성공|변경이\s*성공|(?:login|sign[\s-]?in)\s*success|successfully\s+logged/iu.test(withoutNoSuccess);
 }
 
 function matchStrongPattern(alert) {
@@ -101,17 +94,15 @@ function matchStrongPattern(alert) {
   const text = row.description;
   const count = failureCount(alert);
   const tagged = hasT1110(alert);
+
   if (!row.at || !row.sourceAddress || !row.account || row.ruleLevel === null) return null;
+  if (containsSuccess(text)) return null;
 
-  const withoutNoSuccess = text.replace(
-    /성공(?:은|이)?\s*없(?:습니다|었(?:습니다)?|다)?|성공\s*없음|no\s+success(?:ful(?:\s+logins?)?)?|zero\s+successful\s+logins?/giu, '',
-  );
-  if (/(?:뒤에|후에|이후)\s*성공|성공했|성공했습니다|로그인이\s*성공|변경이\s*성공|(?:login|sign[\s-]?in)\s*success|successfully\s+logged/iu.test(withoutNoSuccess)) return null;
-
-  const rapid = PATTERNS.rapid_source_login_failures;
-  if (tagged && row.ruleLevel >= rapid.minRuleLevel && count >= rapid.minFailures) {
-    return { name: 'rapid_source_login_failures', confidence: rapid.confidence };
+  if (tagged && row.ruleLevel >= PATTERNS.rapid_source_login_failures.minRuleLevel
+    && count >= PATTERNS.rapid_source_login_failures.minFailures) {
+    return { name: 'rapid_source_login_failures', confidence: PATTERNS.rapid_source_login_failures.confidence };
   }
+
   if (!isFailureDescription(text)) return null;
 
   const sameSource = /(?:같은|동일(?:한)?)\s*(?:주소|IP)|한\s*주소|same\s*(?:IP|source|address)|from\s+(?:one|the\s+same)\s*(?:IP|source|address)/iu.test(text);
@@ -141,76 +132,30 @@ function matchStrongPattern(alert) {
     && (tagged || row.ruleLevel >= PATTERNS.sustained_failed_login_streak.minRuleLevel)) {
     return { name: 'sustained_failed_login_streak', confidence: PATTERNS.sustained_failed_login_streak.confidence };
   }
-
-  // 5~8회의 반복 실패는 조사 신호지만 자동 차단에는 근거가 부족합니다.
-  // strong 으로 올리지 않고 아래 ambiguous 경로에서 alert 로만 남깁니다.
   return null;
 }
 
 function isSuspiciousFailure(alert) {
   const row = extractAlert(alert);
   return Boolean(row.at && row.sourceAddress && row.account
+    && row.ruleLevel !== null
     && (hasT1110(alert) || row.ruleLevel >= PATTERNS.review_login_failures.minRuleLevel)
     && isFailureDescription(row.description));
 }
 
-async function askJevLive(alert) {
-  const key = globalThis.process?.env?.JEV_API_KEY;
-  if (!key || typeof globalThis.fetch !== 'function') return null;
-  const row = extractAlert(alert);
-  const state = JSON.stringify({
-    ruleLevel: row.ruleLevel,
-    description: row.description,
-    failedAttempts: failureCount(alert),
-    mitreTechnique: 'T1110',
-  });
-  try {
-    const options = {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'jev-latest',
-        state,
-        questions: {
-          brute_force_likelihood: {
-            type: 'noul',
-            instructions: 'Does this weak failed-login signal plausibly indicate a brute-force attack rather than ordinary user mistakes? Do not infer data not in the state.',
-          },
-        },
-      }),
-    };
-    if (typeof globalThis.AbortSignal?.timeout === 'function') options.signal = globalThis.AbortSignal.timeout(3000);
-    const response = await globalThis.fetch('https://api.typesafe.ai/v1/systemone', options);
-    if (!response.ok) return null;
-    const payload = await response.json();
-    const probability = payload?.answers?.brute_force_likelihood?.noul;
-    return typeof probability === 'number' && Number.isFinite(probability)
-      && probability >= 0 && probability <= 1 ? probability : null;
-  } catch {
-    return null;
+export async function decide(alert) {
+  const strong = matchStrongPattern(alert);
+  if (strong) {
+    return { action: 'block', confidence: strong.confidence, reason: strong.name };
   }
+
+  if (isSuspiciousFailure(alert)) {
+    return {
+      action: 'alert',
+      confidence: PATTERNS.review_login_failures.confidence,
+      reason: 'review_login_failures',
+    };
+  }
+
+  return { action: 'record', confidence: 0.1, reason: 'no_matching_t1110_pattern' };
 }
-
-export function createDecider({ askJev = askJevLive } = {}) {
-  return async function decideOne(alert) {
-    const strong = matchStrongPattern(alert);
-    if (strong) return { action: 'block', confidence: strong.confidence, reason: strong.name };
-    if (!isSuspiciousFailure(alert)) {
-      return { action: 'record', confidence: 0.1, reason: 'no_matching_t1110_pattern' };
-    }
-
-    let probability = null;
-    try {
-      probability = await askJev(alert);
-    } catch {
-      // Jev 미응답·오류는 alert 로 유지합니다.
-    }
-    const confidence = typeof probability === 'number' && Number.isFinite(probability)
-      && probability >= 0 && probability <= 1
-      ? Math.max(0.5, Math.min(0.84, probability))
-      : PATTERNS.review_login_failures.confidence;
-    return { action: 'alert', confidence, reason: 'review_login_failures' };
-  };
-}
-
-export const decide = createDecider();
