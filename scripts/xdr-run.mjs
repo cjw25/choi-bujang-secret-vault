@@ -51,14 +51,7 @@ export async function runXdr({ root, moduleKey, writeError = (line) => console.e
     counts[action] += 1;
   }
 
-  if (moduleKey === 'brute-force') {
-    const integration = await import(pathToFileURL(join(root, 'xdr', moduleKey, 'ztna-gate.mjs')).href);
-    if (typeof integration.writeIntegrationArtifacts === 'function') {
-      await integration.writeIntegrationArtifacts({ root, alerts: fixture.alerts, decisions });
-    }
-  }
-
-  if (moduleKey === 'web-injection') {
+  if (moduleKey === 'brute-force' || moduleKey === 'web-injection') {
     const responder = await import(pathToFileURL(join(root, 'xdr', moduleKey, 'respond.mjs')).href);
     if (typeof responder.writeResponseArtifacts === 'function') {
       await responder.writeResponseArtifacts({ root, alerts: fixture.alerts, decisions });
