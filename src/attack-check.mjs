@@ -19,8 +19,8 @@ async function readJson(response) {
 }
 
 export async function runAttackChecks(config) {
-  if (![5, 6, 7].includes(config.step)) {
-    throw new Error('현재 공격 점검은 5~7단계 자료실 보호 흐름에 맞춰져 있습니다.');
+  if (![5, 6, 7, 8].includes(config.step)) {
+    throw new Error('현재 공격 점검은 5~8단계 자료실 보호 흐름에 맞춰져 있습니다.');
   }
 
   const app = appUrl(config);
