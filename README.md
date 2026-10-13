@@ -280,3 +280,44 @@ Vercel Production 환경의 `SUPABASE_URL`, `SUPABASE_SECRET_KEY`는 계속 서�
 - `fixture:7`의 정상 사건은 `allow`, 복합 이상 사건은 `step_up`
 
 이 검사는 로컬 가상 사건 연습이며 실제 심판 판정이나 운영 자료 차단 성공을 의미하지 않습니다.
+
+## 8단계 저장점 — 자료마다 갈 수 있는 구역을 나눕니다
+
+- 기존 메모의 UUID와 주소는 유지하면서 API 응답에 `note:<UUID>` 자원 ID를 추가했습니다.
+- 강사 공지는 `instructor_notice:<UUID>` 자원 ID 네임스페이스로 분리해 메모와 충돌하지 않게 했습니다.
+- `src/decider.mjs`의 기존 `device_registered`, `step_up_required` 규칙을 유지하고 `resource_zone` 규칙을 추가했습니다.
+- 8단계 구역 판정은 서버가 검증해 공급한 grant의 `subjectId`, `deviceId`, `service`, `method`, `path`, `route`를 엔진 요청과 정확히 대조합니다.
+- 쿼리로 기능을 고르지 않으며, 쿼리가 있거나 `/export` 같은 알 수 없는 기능 경로는 기본 거부합니다.
+- 자료 API는 요청 본문의 `role`, `owner_id`, `ownerId`, `resourceId` 같은 권한 주장을 믿지 않습니다.
+- 메모 단건 API는 처리 전에 저장된 `public_id + owner_id`와 검증된 로그인 사용자를 다시 대조합니다.
+- 강사 공지 수정 API는 `PUT /api/announcements/:id`에서 로그인 검증 뒤 `instructor_memberships.enabled = true`인 저장된 강사 권한을 다시 확인합니다.
+- 다른 사람 메모 직접 API 요청과 일반 학생의 공지 수정 요청은 거부하도록 가상 DB 시험을 추가했습니다.
+- 화면 메뉴와 기존 메모 CRUD 화면은 이번 단계에서 변경하지 않았습니다.
+
+### 8단계 설정
+
+- 단계: `8`
+- Git 저장소: `https://github.com/cjw25/choi-bujang-secret-vault`
+- Production: `https://jeongwon-vault.vercel.app`
+- 로그인 발급자: `https://zjugvqxssegtpiqfncbw.supabase.co/auth/v1`
+- 로그인 audience: `authenticated`
+- 원본 자료 API: `https://zjugvqxssegtpiqfncbw.supabase.co/rest/v1/notes`
+- 판정 규칙: `device_registered`, `step_up_required`, `resource_zone`
+- 새 허용 경로: `PUT /api/announcements/:id`
+
+### 다시 확인
+
+`npm run fixture:8-api && npm run fixture:8 && npm run decider:test && npm run fixture:7 && npm run build -- --local`
+
+정상 결과:
+
+- A 자기 메모 읽기·수정 가상 요청: `allow`
+- B의 A 메모 가상 요청: `deny`
+- 일반 학생 공지 수정 가상 요청: `deny`
+- 강사 공지 수정 가상 요청: `allow`
+- 알 수 없는 기능 경로: `deny`
+- 직접 API 가상 검사에서 다른 사용자 메모와 권한 위조 요청은 거부됩니다.
+- 기존 7단계 등록 기기·미등록 기기·복합 이상 접속·재확인 흐름이 그대로 통과해야 합니다.
+- 공개 `data.json`의 메모는 계속 비어 있어야 합니다.
+
+`fixture:8`과 `fixture:8-api`는 로컬 가상 grant·가상 DB 연습입니다. 실제 운영 엔진의 사용자별 권한 등록 성공이나 Production DB의 강사 권한 등록을 증명하지 않습니다. 특히 `announcements`와 `instructor_memberships`의 실제 Production DB 준비 상태 및 실제 강사 계정 등록 여부는 아직 확인하지 않았습니다.
