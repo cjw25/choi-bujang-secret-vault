@@ -24,8 +24,6 @@
 
 `src/decider.mjs`와 `src/detect.mjs`의 로컬 시험은 반 엔진이나 운영 심판의 결과가 아닙니다. 1단계 이후 제출 묶음 계약 `aleph.defense.submission.v2`는 `scripts/bundle.mjs`에 남아 있으며, 코딩 도구가 해당 단계의 최신 배포 주소와 Git 원격을 맞춘 뒤 사용합니다.
 
-
-
 ## 2단계 저장점 — 자료를 코드 밖으로 옮깁니다
 
 - 정적 `data.json`과 `public/data.json`에는 메모를 두지 않고 빈 `notes` 배열만 남깁니다.
@@ -114,8 +112,6 @@ Vercel Production 환경에는 `SUPABASE_URL`, `SUPABASE_SECRET_KEY`를 서버 �
 
 이 문제는 4단계 「로그인해도 내 자료만 보이게 합니다」에서 개별 메모 요청에도
 `owner_id = login.userId` 조건을 추가하여 막습니다.
-
-
 
 ## 4단계 저장점 — 로그인해도 내 자료만 보이게 합니다
 
@@ -251,3 +247,36 @@ Vercel Production 환경의 `SUPABASE_URL`, `SUPABASE_SECRET_KEY`는 계속 서�
 `통과 · 등록 기기의 정상 요청`
 
 `통과 · 미등록 기기의 가상 요청`
+
+## 7단계 저장점 — 평소와 다른 접속은 다시 확인합니다
+
+- 판정기는 계약에 있는 `signals`, `recentEvents`, `stepUp`만 읽고 출처가 없거나 불명확한 값을 정상값으로 채우지 않습니다.
+- `judge_fixture`는 로컬·심판 가상 사건의 출처 표시일 뿐 실제 위치 증거로 취급하지 않습니다.
+- 기존 `device_registered` 규칙을 유지하고 `step_up_required` 규칙을 추가했습니다.
+- 이른 시각, 처음 보는 네트워크, 최근 대량 읽기 행동이 함께 나타나는 가상 복합 사건만 `step_up`으로 보냅니다. 지역 하나만으로 영구 차단하지 않습니다.
+- `stepUp.verified === true`이고 계약 범위의 최근 추가 확인 요청이면 다시 판정해 `allow`합니다.
+- 토큰 원문이나 기기 개인키는 판정 입력·로그·Git에 기록하지 않습니다.
+
+### 7단계 설정
+
+- 단계: `7`
+- Git 저장소: `https://github.com/cjw25/choi-bujang-secret-vault`
+- Production: `https://jeongwon-vault.vercel.app`
+- 로그인 발급자: `https://zjugvqxssegtpiqfncbw.supabase.co/auth/v1`
+- 로그인 audience: `authenticated`
+- 원본 자료 API: `https://zjugvqxssegtpiqfncbw.supabase.co/rest/v1/notes`
+- 판정 규칙: `device_registered`, `step_up_required`
+
+### 다시 확인
+
+`npm run decider:test && npm run fixture:7`
+
+정상 결과:
+
+- 등록 기기의 정상 요청: `allow`
+- 미등록 기기의 가상 요청: `deny / device_not_registered`
+- 복합 이상 접속: `step_up / step_up_required`
+- 다시 확인한 복합 이상 접속: `allow`
+- `fixture:7`의 정상 사건은 `allow`, 복합 이상 사건은 `step_up`
+
+이 검사는 로컬 가상 사건 연습이며 실제 심판 판정이나 운영 자료 차단 성공을 의미하지 않습니다.
