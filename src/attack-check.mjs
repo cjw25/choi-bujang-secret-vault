@@ -19,8 +19,8 @@ async function readJson(response) {
 }
 
 export async function runAttackChecks(config) {
-  if (config.step !== 5) {
-    throw new Error('현재 공격 점검은 5단계 서버 집중화에 맞춰져 있습니다.');
+  if (![5, 6].includes(config.step)) {
+    throw new Error('현재 공격 점검은 5~6단계 자료실 보호 흐름에 맞춰져 있습니다.');
   }
 
   const app = appUrl(config);
@@ -34,7 +34,7 @@ export async function runAttackChecks(config) {
 
   const metadata = await fetch(new URL('/aleph.json', app), options);
   const metadataJson = await readJson(metadata);
-  const metadataReady = metadata.ok && metadataJson?.step === 5
+  const metadataReady = metadata.ok && metadataJson?.step === config.step
     && Array.isArray(config.allowedRoutes) && config.allowedRoutes.length > 0;
 
   const home = await fetch(app, options);
@@ -55,8 +55,8 @@ export async function runAttackChecks(config) {
   return [
     { attackId: 'anonymous_note_list_denied', expected: '비로그인 메모 목록 요청은 JSON 오류로 거부',
       observed: anonymousDenied ? `비로그인 요청 거부 확인 (HTTP ${anonymous.status})` : `예상과 다른 응답 (HTTP ${anonymous.status})` },
-    { attackId: 'aleph_routes_available', expected: '/aleph.json step 5와 allowedRoutes 1개 이상',
-      observed: metadataReady ? 'step 5와 허용 경로 확인' : `메타데이터 확인 실패 또는 단계 불일치 (HTTP ${metadata.status})` },
+    { attackId: 'aleph_routes_available', expected: `/aleph.json step ${config.step}와 allowedRoutes 1개 이상`,
+      observed: metadataReady ? `step ${config.step}와 허용 경로 확인` : `메타데이터 확인 실패 또는 단계 불일치 (HTTP ${metadata.status})` },
     { attackId: 'security_header_present', expected: '첫 화면에 nosniff 또는 CSP 보안 헤더 존재',
       observed: nosniff || csp ? `첫 화면 보안 헤더 확인 (${nosniff ? 'nosniff' : 'CSP'})` : `보안 헤더를 확인하지 못함 (HTTP ${home.status})` },
     { attackId: 'browser_public_key_absent', expected: '화면 코드에 Supabase 공개 키 또는 anon JWT가 없음',
