@@ -230,3 +230,24 @@ Vercel Production 환경의 `SUPABASE_URL`, `SUPABASE_SECRET_KEY`는 계속 서�
 정상 결과:
 
 `block=10 alert=9 record=9`
+
+## 6단계 — 등록한 기기만 자료실에 들어옵니다
+
+- 판정 요청의 `subjectId`는 운영 엔진이 확인해 만든 가명 사용자 식별자입니다.
+- 판정 요청의 `deviceRegistered`는 운영 엔진이 확인한 기기 등록 여부입니다.
+- `src/decider.mjs`의 `device_registered` 규칙은 `deviceRegistered === true`일 때만 요청을 허용합니다.
+- `deviceRegistered`가 `false`이거나 값이 없으면 `deny`와 `device_not_registered`로 거부합니다.
+- 인증서·CA·서명 키를 새로 만들거나 Git에 저장하지 않습니다.
+
+### 다시 확인
+
+1. `npm run decider:test`를 실행합니다.
+2. `등록 기기의 정상 요청`이 `통과`인지 확인합니다.
+3. `미등록 기기의 가상 요청`이 `통과`인지 확인합니다. 이 항목은 내부적으로 `deny`와 `device_not_registered` 응답을 검사합니다.
+4. 이 명령은 로컬 가상 요청 연습이며 실제 심판 판정이나 미등록 기기 공격 결과가 아닙니다.
+
+정상 출력:
+
+`통과 · 등록 기기의 정상 요청`
+
+`통과 · 미등록 기기의 가상 요청`
