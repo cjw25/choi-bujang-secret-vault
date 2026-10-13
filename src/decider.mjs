@@ -1,8 +1,15 @@
 // ALEPH SDP 엔진이 확인한 요청만 받는 학생 판정기입니다.
 // 6단계: 등록된 기기만 자료실 접근을 허용합니다.
 // 7단계: 검증된 가상 복합 이상 접속은 추가 본인 확인을 요구합니다.
+// 8단계: 서버가 검증해 공급한 자원 권한과 정확한 메서드·경로를 대조합니다.
 // 요청 본문의 userId, role, 기기 키, 토큰을 별도로 믿거나 저장하지 마세요.
-export const RULE_IDS = Object.freeze(['device_registered', 'step_up_required']);
+export const RULE_IDS = Object.freeze(['device_registered', 'step_up_required', 'resource_zone']);
+
+const RESOURCE_GRANT_KEYS = Object.freeze([
+  'classId', 'projectId', 'subjectId', 'deviceId',
+  'service', 'method', 'path', 'route', 'expiresAt',
+]);
+const RESOURCE_PATH = /^\/(api\/)?(notes|announcements)\/(demo|[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/iu;
 
 function readVerifiedFixtureSignals(request) {
   const signals = request?.signals;
@@ -77,7 +84,53 @@ function response(request, decision, reasonCode, ruleId) {
   };
 }
 
-export async function decide(request) {
+function validateResourceGrant(grant) {
+  if (!grant || typeof grant !== 'object' || Array.isArray(grant)) {
+    throw new TypeError('유효한 자원 권한이 필요합니다.');
+  }
+  const keys = Object.keys(grant).sort().join(',');
+  if (keys !== [...RESOURCE_GRANT_KEYS].sort().join(',')) {
+    throw new TypeError('자원 권한 항목이 맞지 않습니다.');
+  }
+  if (RESOURCE_GRANT_KEYS.some((key) => typeof grant[key] !== 'string' || !grant[key])) {
+    throw new TypeError('자원 권한 값이 비어 있습니다.');
+  }
+  if (!/^[a-f0-9]{16}$/u.test(grant.deviceId)) {
+    throw new TypeError('확인된 기기 ID 형식이 필요합니다.');
+  }
+  const match = RESOURCE_PATH.exec(grant.path);
+  if (!match || grant.service !== match[2]
+      || !['GET', 'PUT', 'DELETE'].includes(grant.method)
+      || grant.route !== `${grant.method} /${match[1] ?? ''}${match[2]}/:id`
+      || !Number.isFinite(Date.parse(grant.expiresAt))) {
+    throw new TypeError('정확한 자원 메서드와 경로가 필요합니다.');
+  }
+  return Object.freeze({ ...grant });
+}
+
+function resourceRequestAllowed(request, grants) {
+  if (typeof request?.subjectId !== 'string' || !request.subjectId
+      || !/^[a-f0-9]{16}$/u.test(request?.deviceId ?? '')
+      || request.queryLength !== 0) {
+    return false;
+  }
+
+  const match = RESOURCE_PATH.exec(request.path ?? '');
+  if (!match || request.service !== match[2]
+      || !['GET', 'PUT', 'DELETE'].includes(request.method)
+      || request.route !== `${request.method} /${match[1] ?? ''}${match[2]}/:id`) {
+    return false;
+  }
+
+  const requestAt = Date.parse(request.at);
+  if (!Number.isFinite(requestAt)) return false;
+
+  return grants.some((grant) => RESOURCE_GRANT_KEYS.slice(0, -1)
+    .every((key) => grant[key] === request[key])
+    && requestAt <= Date.parse(grant.expiresAt));
+}
+
+async function decideBase(request) {
   if (request.deviceRegistered !== true) {
     return response(request, 'deny', 'device_not_registered', 'device_registered');
   }
@@ -95,4 +148,23 @@ export async function decide(request) {
   }
 
   return response(request, 'allow', 'approved', 'device_registered');
+}
+
+// 서버 내부에서 검증한 권한 목록만 주입합니다. 브라우저 요청·쿼리·본문에서 grant를 만들지 않습니다.
+export function createDecider(grants) {
+  if (!Array.isArray(grants)) throw new TypeError('자원 권한 목록이 필요합니다.');
+  const snapshot = grants.map(validateResourceGrant);
+
+  return async function decideWithResourceZone(request) {
+    if (request.deviceRegistered !== true) return decideBase(request);
+    if (!resourceRequestAllowed(request, snapshot)) {
+      return response(request, 'deny', 'policy_denied', 'resource_zone');
+    }
+    return decideBase(request);
+  };
+}
+
+// 기존 6~7단계 기본 진입점은 그대로 유지합니다.
+export async function decide(request) {
+  return decideBase(request);
 }
