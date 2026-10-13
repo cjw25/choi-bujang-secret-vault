@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import config from '../aleph.config.json' with { type: 'json' };
 import { createLoginVerifier } from '../src/verify-login.mjs';
+import { noteResourceId } from '../src/resource-id.mjs';
 
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
@@ -100,6 +101,7 @@ export default async function handler(request, response) {
     return sendJson(response, 200, {
       notes: data.map((note) => ({
         id: note.public_id,
+        resourceId: noteResourceId(note.public_id),
         title: note.title,
         body: note.content,
       })),
@@ -149,5 +151,5 @@ export default async function handler(request, response) {
     });
   }
 
-  return sendJson(response, 201, { id });
+  return sendJson(response, 201, { id, resourceId: noteResourceId(id) });
 }

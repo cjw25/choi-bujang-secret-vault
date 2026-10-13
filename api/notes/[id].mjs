@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import config from '../../aleph.config.json' with { type: 'json' };
 import { createLoginVerifier } from '../../src/verify-login.mjs';
+import { noteResourceId } from '../../src/resource-id.mjs';
 
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
@@ -127,6 +128,7 @@ export default async function handler(request, response) {
 
     return sendJson(response, 200, {
       id: data.public_id,
+      resourceId: noteResourceId(data.public_id),
       title: data.title,
       body: data.content,
     });
@@ -174,6 +176,7 @@ export default async function handler(request, response) {
 
     return sendJson(response, 200, {
       id: data.public_id,
+      resourceId: noteResourceId(data.public_id),
       title: data.title,
       body: data.content,
     });
@@ -183,7 +186,7 @@ export default async function handler(request, response) {
     .from('notes')
     .delete()
     .eq('public_id', id)
-      .eq('owner_id', login.userId)
+    .eq('owner_id', login.userId)
     .select('public_id')
     .maybeSingle();
 
