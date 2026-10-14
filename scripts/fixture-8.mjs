@@ -5,9 +5,9 @@ import { createDecider } from '../src/decider.mjs';
 
 const EMPTY_QUERY_SHA256 = createHash('sha256').update('').digest('hex');
 const NONEMPTY_QUERY_SHA256 = createHash('sha256').update('mode=export').digest('hex');
-const NOTE_ID = '11111111-1111-4111-8111-111111111111';
-const NOTICE_ID = '22222222-2222-4222-8222-222222222222';
-const MATERIAL_ID = '33333333-3333-4333-8333-333333333333';
+const NOTE_ID = 'judge-note-a';
+const NOTICE_ID = 'judge-notice-a';
+const MATERIAL_ID = 'judge-material-a';
 const DEVICE_ID = 'a'.repeat(16);
 
 function request({ subjectId = 'student_a', service, method, path, route,
@@ -37,20 +37,21 @@ function request({ subjectId = 'student_a', service, method, path, route,
 export async function runFixture8() {
   const decide = createDecider([]);
   const cases = [
-    ['메모 한 건 읽기', request({ service: 'notes', method: 'GET', path: `/notes/${NOTE_ID}`, route: 'GET /notes/:id' }), 'allow'],
-    ['메모 한 건 수정', request({ service: 'notes', method: 'PUT', path: `/notes/${NOTE_ID}`, route: 'PUT /notes/:id' }), 'allow'],
-    ['메모 한 건 삭제', request({ service: 'notes', method: 'DELETE', path: `/notes/${NOTE_ID}`, route: 'DELETE /notes/:id' }), 'allow'],
-    ['메모 생성', request({ service: 'notes', method: 'POST', path: '/notes', route: 'POST /notes' }), 'allow'],
-    ['메모 전체 목록 조회', request({ service: 'notes', method: 'GET', path: '/notes', route: 'GET /notes' }), 'deny'],
-    ['공지 생성', request({ service: 'announcements', method: 'POST', path: '/announcements', route: 'POST /announcements' }), 'deny'],
-    ['공지 수정', request({ service: 'announcements', method: 'PUT', path: `/announcements/${NOTICE_ID}`, route: 'PUT /announcements/:id' }), 'deny'],
-    ['강사 자료 생성', request({ service: 'materials', method: 'POST', path: '/materials', route: 'POST /materials' }), 'deny'],
-    ['강사 자료 수정', request({ service: 'materials', method: 'PUT', path: `/materials/${MATERIAL_ID}`, route: 'PUT /materials/:id' }), 'deny'],
-    ['쿼리로 기능 선택', request({ service: 'notes', method: 'GET', path: `/notes/${NOTE_ID}`, route: 'GET /notes/:id',
+    ['메모 한 건 읽기', request({ service: 'notes', method: 'GET', path: `/api/notes/${NOTE_ID}`, route: 'GET /api/notes/:id' }), 'allow'],
+    ['메모 한 건 수정', request({ service: 'notes', method: 'PUT', path: `/api/notes/${NOTE_ID}`, route: 'PUT /api/notes/:id' }), 'allow'],
+    ['메모 한 건 삭제', request({ service: 'notes', method: 'DELETE', path: `/api/notes/${NOTE_ID}`, route: 'DELETE /api/notes/:id' }), 'allow'],
+    ['메모 생성', request({ service: 'notes', method: 'POST', path: '/api/notes', route: 'POST /api/notes' }), 'deny'],
+    ['메모 전체 목록 조회', request({ service: 'notes', method: 'GET', path: '/api/notes', route: 'GET /api/notes' }), 'deny'],
+    ['공지 한 건 읽기', request({ service: 'announcements', method: 'GET', path: `/api/announcements/${NOTICE_ID}`, route: 'GET /api/announcements/:id' }), 'allow'],
+    ['공지 생성', request({ service: 'announcements', method: 'POST', path: '/api/announcements', route: 'POST /api/announcements' }), 'deny'],
+    ['공지 수정', request({ service: 'announcements', method: 'PUT', path: `/api/announcements/${NOTICE_ID}`, route: 'PUT /api/announcements/:id' }), 'deny'],
+    ['강사 자료 읽기', request({ service: 'materials', method: 'GET', path: `/api/materials/${MATERIAL_ID}`, route: 'GET /api/materials/:id' }), 'deny'],
+    ['강사 자료 생성', request({ service: 'materials', method: 'POST', path: '/api/materials', route: 'POST /api/materials' }), 'deny'],
+    ['쿼리로 기능 선택', request({ service: 'notes', method: 'GET', path: `/api/notes/${NOTE_ID}`, route: 'GET /api/notes/:id',
       queryLength: 11, querySha256: NONEMPTY_QUERY_SHA256 }), 'deny'],
     ['알 수 없는 export 경로', request({ service: 'notes', method: 'GET',
-      path: `/notes/${NOTE_ID}/export`, route: 'GET /notes/:id/export' }), 'deny'],
-    ['완전히 모르는 경로', request({ service: 'unknown', method: 'GET', path: '/unknown', route: 'GET /unknown' }), 'deny'],
+      path: `/api/notes/${NOTE_ID}/export`, route: 'GET /api/notes/:id/export' }), 'deny'],
+    ['완전히 모르는 경로', request({ service: 'unknown', method: 'GET', path: '/api/unknown/x', route: 'GET /api/unknown/:id' }), 'deny'],
   ];
 
   const results = [];
