@@ -286,13 +286,13 @@ Vercel Production 환경의 `SUPABASE_URL`, `SUPABASE_SECRET_KEY`는 계속 서�
 - 기존 메모의 UUID와 주소는 유지하면서 API 응답에 `note:<UUID>` 자원 ID를 추가했습니다.
 - 강사 공지는 `instructor_notice:<UUID>` 자원 ID 네임스페이스로 분리해 메모와 충돌하지 않게 했습니다.
 - `src/decider.mjs`의 기존 `device_registered`, `step_up_required` 규칙을 유지하고 `resource_zone` 규칙을 추가했습니다.
-- 8단계 구역 판정은 서버가 검증해 공급한 grant의 `subjectId`, `deviceId`, `service`, `method`, `path`, `route`를 엔진 요청과 정확히 대조합니다.
-- 쿼리로 기능을 고르지 않으며, 쿼리가 있거나 `/export` 같은 알 수 없는 기능 경로는 기본 거부합니다.
-- 자료 API는 요청 본문의 `role`, `owner_id`, `ownerId`, `resourceId` 같은 권한 주장을 믿지 않습니다.
-- 메모 단건 API는 처리 전에 저장된 `public_id + owner_id`와 검증된 로그인 사용자를 다시 대조합니다.
-- 강사 공지 수정 API는 `PUT /api/announcements/:id`에서 로그인 검증 뒤 `instructor_memberships.enabled = true`인 저장된 강사 권한을 다시 확인합니다.
-- 다른 사람 메모 직접 API 요청과 일반 학생의 공지 수정 요청은 거부하도록 가상 DB 시험을 추가했습니다.
-- 화면 메뉴와 기존 메모 CRUD 화면은 이번 단계에서 변경하지 않았습니다.
+- 판정기는 계약의 `service`, `method`, `path`, `route`와 빈 쿼리 여부로 알려진 자원 구역만 허용하고 나머지는 기본 거부합니다.
+- 메모는 ID가 있는 단건 `GET`, `PUT`, `DELETE`만 허용하고 메모 생성·전체 목록은 판정기에서 거부합니다.
+- 정상 자기 메모 `GET`은 `queryLength === 0`이면 빈 쿼리 지문의 표현 차이 때문에 막지 않습니다.
+- 반 공지는 단건 `GET`만 허용하며 쓰기 요청은 판정기에서 모두 거부합니다. 강사 공지 수정은 별도 서버 관리 API가 저장된 강사 권한을 다시 확인합니다.
+- 강사 자료는 판정기에서 모두 거부하고, 쿼리 기능 선택·`/export`·알 수 없는 경로도 거부합니다.
+- 자료 API는 요청 본문의 `role`, `owner_id`, `ownerId`, `resourceId` 같은 권한 주장을 믿지 않으며, 메모 단건 API는 저장된 `owner_id`와 검증된 로그인 사용자를 다시 대조합니다.
+- 화면 메뉴와 기존 메모 CRUD 화면은 변경하지 않았습니다.
 
 ### 8단계 설정
 
@@ -303,7 +303,11 @@ Vercel Production 환경의 `SUPABASE_URL`, `SUPABASE_SECRET_KEY`는 계속 서�
 - 로그인 audience: `authenticated`
 - 원본 자료 API: `https://zjugvqxssegtpiqfncbw.supabase.co/rest/v1/notes`
 - 판정 규칙: `device_registered`, `step_up_required`, `resource_zone`
-- 새 허용 경로: `PUT /api/announcements/:id`
+- 허용 경로:
+  - `GET /api/notes/:id`
+  - `PUT /api/notes/:id`
+  - `DELETE /api/notes/:id`
+  - `GET /api/announcements/:id`
 
 ### 다시 확인
 
@@ -311,13 +315,47 @@ Vercel Production 환경의 `SUPABASE_URL`, `SUPABASE_SECRET_KEY`는 계속 서�
 
 정상 결과:
 
-- A 자기 메모 읽기·수정 가상 요청: `allow`
-- B의 A 메모 가상 요청: `deny`
-- 일반 학생 공지 수정 가상 요청: `deny`
-- 강사 공지 수정 가상 요청: `allow`
-- 알 수 없는 기능 경로: `deny`
+- 자기 메모 단건 읽기·수정·삭제: `allow`
+- 메모 생성·전체 목록: `deny`
+- 공지 단건 읽기: `allow`, 공지 쓰기: `deny`
+- 강사 자료와 알 수 없는 기능 경로: `deny`
 - 직접 API 가상 검사에서 다른 사용자 메모와 권한 위조 요청은 거부됩니다.
 - 기존 7단계 등록 기기·미등록 기기·복합 이상 접속·재확인 흐름이 그대로 통과해야 합니다.
 - 공개 `data.json`의 메모는 계속 비어 있어야 합니다.
 
-`fixture:8`과 `fixture:8-api`는 로컬 가상 grant·가상 DB 연습입니다. 실제 운영 엔진의 사용자별 권한 등록 성공이나 Production DB의 강사 권한 등록을 증명하지 않습니다. 특히 `announcements`와 `instructor_memberships`의 실제 Production DB 준비 상태 및 실제 강사 계정 등록 여부는 아직 확인하지 않았습니다.
+`fixture:8`과 `fixture:8-api`는 로컬 가상 요청·가상 DB 연습이며 실제 운영 엔진이나 Production DB의 심판 결과를 뜻하지 않습니다.
+
+## 9단계 저장점 — 도플갱어를 찾고 권한을 거둡니다
+
+- `src/detect.mjs`는 가상 사건에서 시각, 가명 사용자, 확인된 가상 기기, 요청 종류, 판정, 네트워크만 정규화합니다. 메모 내용·토큰·실명 같은 값은 저장하거나 결과에 복사하지 않습니다.
+- 같은 가명 사용자와 같은 기기에서 `allow`된 읽기 요청이 10분 안에 120건을 **초과**하고 네트워크가 `unusual`일 때만 복합 의심 사건으로 탐지합니다.
+- 지역 하나만 다르거나 평소 네트워크의 대량 조회, 정확히 120건, 거부된 조회, 서로 다른 기기에 나뉜 조회, 10분 밖의 조회는 정상 `observe`를 유지합니다.
+- 복합 의심 사건은 `{ action: 'propose_revocation', reasonCode: 'burst_read', subject, deviceId }` 제안만 반환하며 확인된 가상 기기 한 개만 대상으로 합니다.
+- 실제 회수 API를 만들거나 기기 등록 상태·기존 접근 판정 응답을 바꾸지 않습니다. 실제 회수와 회수 시간은 운영 심판의 별도 확인 대상입니다.
+
+### 9단계 설정
+
+- 단계: `9`
+- Git 저장소: `https://github.com/cjw25/choi-bujang-secret-vault`
+- Production: `https://jeongwon-vault.vercel.app`
+- 로그인 발급자: `https://zjugvqxssegtpiqfncbw.supabase.co/auth/v1`
+- 로그인 audience: `authenticated`
+- 원본 자료 API: `https://zjugvqxssegtpiqfncbw.supabase.co/rest/v1/notes`
+- 기존 판정 규칙: `device_registered`, `step_up_required`, `resource_zone`
+- 허용 경로는 8단계와 동일하게 유지합니다.
+
+### 다시 확인
+
+`npm run detect:test && npm run decider:test && npm run fixture:7 && npm run fixture:8 && npm run fixture:8-api && npm run build -- --local`
+
+정상 결과:
+
+- 정상 조회 30건: `observe`
+- 평소 네트워크의 121건: `observe`
+- 다른 네트워크지만 정확히 120건: `observe`
+- 다른 네트워크의 121건: `propose_revocation / burst_read`이며 가명 사용자와 가상 기기 하나가 포함됩니다.
+- 지역만 다른 대량 조회, 거부된 대량 조회, 두 기기에 나뉜 조회, 10분 밖 조회는 `observe`입니다.
+- 입력에 비밀값처럼 보이는 추가 필드가 있어도 탐지 결과에 노출되지 않습니다.
+- 6~8단계 판정기와 API 가상 검사는 기존 결과를 유지해야 합니다.
+
+`npm run detect:test`는 가상 사건 연습이며 실제 기기 회수, 운영 반 엔진 연결, 심판 통과를 증명하지 않습니다.
