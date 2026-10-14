@@ -39,6 +39,8 @@ export async function runFixture8() {
   const cases = [
     ['메모 한 건 읽기', request({ service: 'notes', method: 'GET', path: `/api/notes/${NOTE_ID}`, route: 'GET /api/notes/:id' }), 'allow'],
     ['메모 읽기 정규화 경로', request({ service: 'notes', method: 'GET', path: `/api/notes/${NOTE_ID}`, route: 'GET /notes/:id' }), 'allow'],
+    ['메모 읽기 빈 쿼리 지문 차이', request({ service: 'notes', method: 'GET', path: `/api/notes/${NOTE_ID}`, route: 'GET /notes/:id',
+      queryLength: 0, querySha256: 'judge-empty-query' }), 'allow'],
     ['메모 한 건 수정', request({ service: 'notes', method: 'PUT', path: `/api/notes/${NOTE_ID}`, route: 'PUT /api/notes/:id' }), 'allow'],
     ['메모 한 건 삭제', request({ service: 'notes', method: 'DELETE', path: `/api/notes/${NOTE_ID}`, route: 'DELETE /api/notes/:id' }), 'allow'],
     ['메모 생성', request({ service: 'notes', method: 'POST', path: '/api/notes', route: 'POST /api/notes' }), 'deny'],

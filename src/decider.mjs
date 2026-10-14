@@ -73,7 +73,21 @@ function itemRouteMatches(route, service, method) {
     || route === `${method} /api/${service}/:id`;
 }
 
+function ownNoteReadRequest(request) {
+  if (request?.method !== 'GET' || request?.service !== 'notes'
+      || typeof request?.path !== 'string' || typeof request?.route !== 'string'
+      || request?.queryLength !== 0) return false;
+
+  const match = ITEM_PATH.exec(request.path);
+  return Boolean(match && match[1].toLowerCase() === 'notes'
+    && itemRouteMatches(request.route, 'notes', 'GET'));
+}
+
 function knownZoneRequest(request) {
+  // 정상 자기 메모 읽기는 쿼리 길이가 0이면 허용합니다.
+  // 빈 쿼리 지문의 표현 차이 때문에 정상 읽기를 막지 않습니다.
+  if (ownNoteReadRequest(request)) return true;
+
   if (typeof request?.path !== 'string' || typeof request?.route !== 'string'
       || typeof request?.service !== 'string' || typeof request?.method !== 'string'
       || !queryIsEmpty(request)) return false;
