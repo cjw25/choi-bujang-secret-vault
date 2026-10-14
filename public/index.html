@@ -101,7 +101,6 @@
 
 <script type="module">
 const SESSION_KEY = 'aleph_session_v5';
-sessionStorage.removeItem('aleph_device_session_v11');
 const signedOut = document.querySelector('#signed-out');
 const signedIn = document.querySelector('#signed-in');
 const loginForm = document.querySelector('#login-form');
@@ -125,7 +124,7 @@ const editorTitle = document.querySelector('#editor-title');
 const cancelEdit = document.querySelector('#cancel-edit');
 const noteMessage = document.querySelector('#note-message');
 let currentSession = null;
-let currentDeviceSession = null;
+let deviceApproved = false;
 let editingId = null;
 let deferredInstallPrompt = null;
 
@@ -147,14 +146,6 @@ function loadStoredSession() {
 function saveSession(session) {
   if (session) sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
   else sessionStorage.removeItem(SESSION_KEY);
-}
-
-function loadDeviceSession() {
-  return null;
-}
-
-function saveDeviceSession(value) {
-  currentDeviceSession = value;
 }
 
 function clearProtectedView(message = '기기 승인 확인 후 자료를 볼 수 있습니다.') {
@@ -197,7 +188,6 @@ async function apiRequest(path, options = {}) {
   if (!currentSession?.access_token) throw new Error('로그인이 필요합니다.');
   const headers = {
     Authorization: `Bearer ${currentSession.access_token}`,
-    ...(currentDeviceSession?.token ? { 'X-Device-Session': currentDeviceSession.token } : {}),
     ...(options.body ? { 'Content-Type': 'application/json' } : {}),
   };
   const response = await fetch(path, { ...options, cache: 'no-store', headers });
@@ -356,7 +346,7 @@ async function loadNotes() {
     clearProtectedView('로그인 후 기기 승인을 확인해 주세요.');
     return;
   }
-  if (!currentDeviceSession?.token) {
+  if (!deviceApproved) {
     clearProtectedView();
     return;
   }
@@ -368,7 +358,7 @@ async function loadNotes() {
     renderNotes(data.notes);
   } catch (error) {
     if (error.status === 403 && error.data?.reasonCode === 'device_not_registered') {
-      saveDeviceSession(null);
+      deviceApproved = false;
       setDeviceState('pending', '기기 승인이 없거나 만료·회수되었습니다. 승인 결과를 다시 확인해 주세요.');
       clearProtectedView();
       return;
@@ -379,7 +369,7 @@ async function loadNotes() {
 
 function showSession(session) {
   currentSession = session;
-  currentDeviceSession = session ? loadDeviceSession() : null;
+  deviceApproved = false;
   const loggedIn = Boolean(session?.access_token);
   signedOut.hidden = loggedIn;
   signedIn.hidden = !loggedIn;
@@ -388,8 +378,7 @@ function showSession(session) {
   if (loggedIn) {
     authMessage.textContent = '로그인에 성공했습니다.';
     authMessage.classList.add('ok');
-    setDeviceState(currentDeviceSession ? 'checking' : 'not_requested',
-      currentDeviceSession ? '저장된 짧은 기기 세션을 서버에서 다시 확인합니다.' : '이 브라우저의 설치 여부와 관계없이 서버 기기 승인이 필요합니다.');
+    setDeviceState('not_requested', '이 브라우저의 설치 여부와 관계없이 서버 기기 승인이 필요합니다.');
     void loadNotes();
   } else {
     authMessage.textContent = '';
@@ -430,7 +419,7 @@ loginForm.addEventListener('submit', async event => {
       body: JSON.stringify({ email: emailInput.value.trim(), password: passwordInput.value }),
     });
     passwordInput.value = '';
-    saveDeviceSession(null);
+    deviceApproved = false;
     saveSession(session);
     showSession(session);
   } catch (error) {
@@ -441,7 +430,7 @@ loginForm.addEventListener('submit', async event => {
 
 logoutButton.addEventListener('click', () => {
   saveSession(null);
-  saveDeviceSession(null);
+  deviceApproved = false;
   showSession(null);
 });
 
@@ -452,7 +441,7 @@ deviceRequestButton.addEventListener('click', async () => {
   }
   deviceRequestButton.disabled = true;
   deviceCheckButton.disabled = true;
-  saveDeviceSession(null);
+  deviceApproved = false;
   clearProtectedView();
   setDeviceState('checking', '패스키 등록 요청을 준비합니다.');
   try {
@@ -478,7 +467,7 @@ deviceCheckButton.addEventListener('click', async () => {
   }
   deviceRequestButton.disabled = true;
   deviceCheckButton.disabled = true;
-  saveDeviceSession(null);
+  deviceApproved = false;
   clearProtectedView();
   setDeviceState('checking', '서버 승인 상태와 이 기기의 패스키를 확인합니다.');
   try {
@@ -495,11 +484,10 @@ deviceCheckButton.addEventListener('click', async () => {
       setDeviceState('pending', '패스키는 확인됐지만 서버 승인 전입니다. 보호 자료는 계속 숨깁니다.');
       return;
     }
-    if (result.status !== 'approved' || typeof result.deviceSession !== 'string'
-        || typeof result.expiresAt !== 'string') {
+    if (result.status !== 'approved') {
       throw new Error('서버 승인 결과가 올바르지 않습니다.');
     }
-    saveDeviceSession({ token: result.deviceSession, expiresAt: result.expiresAt });
+    deviceApproved = true;
     setDeviceState('approved', '서버가 승인된 기기로 확인했습니다. 기존 자료실을 엽니다.');
     await loadNotes();
   } catch (error) {

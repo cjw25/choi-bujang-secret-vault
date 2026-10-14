@@ -11,7 +11,8 @@ import { createLoginVerifier } from './verify-login.mjs';
 import {
   CHALLENGE_SECONDS,
   DEVICE_SESSION_SECONDS,
-  newDeviceSession,
+  loginSessionToken,
+  sha256,
 } from './device-session.mjs';
 
 const APP_URL = new URL(config.publicAppUrl);
@@ -225,20 +226,17 @@ export async function handleDeviceVerify(request, response) {
 
     if (stored.approved !== true) return sendJson(response, 200, { status: 'pending' });
 
-    const session = newDeviceSession();
+    const loginToken = loginSessionToken(request);
+    if (!loginToken) throw new Error('login_token_missing');
     const expiresAt = new Date(Date.now() + DEVICE_SESSION_SECONDS * 1000).toISOString();
-    const { error } = await supabase.from('device_sessions').insert({
-      token_sha256: session.tokenSha256,
+    const { error } = await supabase.from('device_sessions').upsert({
+      token_sha256: sha256(loginToken),
       owner_id: login.userId,
       credential_id: stored.id,
       expires_at: expiresAt,
-    });
+    }, { onConflict: 'token_sha256' });
     if (error) throw new Error('session_store_failed');
-    return sendJson(response, 200, {
-      status: 'approved',
-      deviceSession: session.token,
-      expiresAt,
-    });
+    return sendJson(response, 200, { status: 'approved' });
   } catch {
     return sendJson(response, 500, { error: '기기 승인 기능을 사용할 수 없습니다.' });
   }

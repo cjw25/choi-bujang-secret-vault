@@ -1,25 +1,21 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash } from 'node:crypto';
 
-export const DEVICE_SESSION_HEADER = 'x-device-session';
 export const DEVICE_SESSION_SECONDS = 30 * 60;
 export const CHALLENGE_SECONDS = 5 * 60;
-const SESSION_TOKEN = /^[A-Za-z0-9_-]{43}$/u;
 
 export const sha256 = value => createHash('sha256').update(value).digest('hex');
 
-export function newDeviceSession() {
-  const token = randomBytes(32).toString('base64url');
-  return { token, tokenSha256: sha256(token) };
-}
-
-export function deviceSessionHeader(request) {
-  const value = request?.headers?.[DEVICE_SESSION_HEADER]
-    ?? request?.headers?.['X-Device-Session'];
-  return typeof value === 'string' ? value : '';
+export function loginSessionToken(request) {
+  const authorization = request?.headers?.authorization
+    ?? request?.headers?.Authorization;
+  if (typeof authorization !== 'string') return '';
+  const match = /^Bearer\s+(.+)$/iu.exec(authorization.trim());
+  return match?.[1] ?? '';
 }
 
 export async function checkDeviceSession(supabase, ownerId, token, now = Date.now()) {
-  if (!supabase || typeof ownerId !== 'string' || !SESSION_TOKEN.test(token ?? '')) return false;
+  if (!supabase || typeof ownerId !== 'string'
+      || typeof token !== 'string' || token.length < 16 || token.length > 8192) return false;
 
   const { data: session, error: sessionError } = await supabase
     .from('device_sessions')
@@ -42,5 +38,5 @@ export async function checkDeviceSession(supabase, ownerId, token, now = Date.no
 
 export async function studentDeviceApproved(request, login, supabase) {
   if (login?.kind !== 'student') return true;
-  return checkDeviceSession(supabase, login.userId, deviceSessionHeader(request));
+  return checkDeviceSession(supabase, login.userId, loginSessionToken(request));
 }
