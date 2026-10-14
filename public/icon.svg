@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="BYTE BACK 내 자료실">
+  <rect width="512" height="512" rx="104" fill="#101a28"/>
+  <path d="M256 72 410 132v112c0 102-64 166-154 196-90-30-154-94-154-196V132L256 72Z" fill="#1a2a3d" stroke="#8ad8df" stroke-width="24"/>
+  <path d="M188 252h136v104H188z" fill="#8ad8df"/>
+  <path d="M216 252v-34a40 40 0 0 1 80 0v34" fill="none" stroke="#8ad8df" stroke-width="24" stroke-linecap="round"/>
+</svg>

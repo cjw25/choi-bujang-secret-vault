@@ -7,14 +7,14 @@ const source = resolve(root, 'data.json');
 const output = resolve(root, 'public', 'data.json');
 const config = JSON.parse(await readFile(resolve(root, 'aleph.config.json'), 'utf8'));
 
-// 10단계도 앞 단계와 같은 공개 data.json 보호 흐름을 그대로 유지합니다.
-if (![2, 3, 4, 5, 6, 7, 8, 9, 10].includes(config.step)) {
-  throw new Error('현재 빌드 흐름은 2~10단계 자료 보호 흐름에 맞춰져 있습니다.');
+// 11단계도 앞 단계와 같은 공개 data.json 보호 흐름을 그대로 유지합니다.
+if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11].includes(config.step)) {
+  throw new Error('현재 빌드 흐름은 2~11단계 자료 보호 흐름에 맞춰져 있습니다.');
 }
 
 const data = JSON.parse(await readFile(source, 'utf8'));
 if (!Array.isArray(data.notes) || data.notes.length !== 0) {
-  throw new Error('2~10단계에서는 공개 data.json에 메모를 남기지 마세요.');
+  throw new Error('2~11단계에서는 공개 data.json에 메모를 남기지 마세요.');
 }
 
 await mkdir(resolve(root, 'public'), { recursive: true });
