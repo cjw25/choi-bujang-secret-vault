@@ -329,6 +329,7 @@ Vercel Production 환경의 `SUPABASE_URL`, `SUPABASE_SECRET_KEY`는 계속 서�
 
 - `src/detect.mjs`는 가상 사건에서 시각, 가명 사용자, 확인된 가상 기기, 요청 종류, 판정, 네트워크만 정규화합니다. 메모 내용·토큰·실명 같은 값은 저장하거나 결과에 복사하지 않습니다.
 - 같은 가명 사용자와 같은 기기에서 `allow`된 읽기 요청이 10분 안에 120건을 **초과**하고 네트워크가 `unusual`일 때만 복합 의심 사건으로 탐지합니다.
+- 원래 9단계 계약의 `{ at, method: 'GET', identity: { sub } }` 형식도 호환하며, 같은 가명 사용자의 GET이 10분 안에 120건을 초과하면 `propose_revocation / burst_read` 제안을 냅니다. 이 호환 결과에는 검증된 기기 값이 없으므로 `deviceId`를 만들어 넣지 않습니다.
 - 지역 하나만 다르거나 평소 네트워크의 대량 조회, 정확히 120건, 거부된 조회, 서로 다른 기기에 나뉜 조회, 10분 밖의 조회는 정상 `observe`를 유지합니다.
 - 복합 의심 사건은 `{ action: 'propose_revocation', reasonCode: 'burst_read', subject, deviceId }` 제안만 반환하며 확인된 가상 기기 한 개만 대상으로 합니다.
 - 실제 회수 API를 만들거나 기기 등록 상태·기존 접근 판정 응답을 바꾸지 않습니다. 실제 회수와 회수 시간은 운영 심판의 별도 확인 대상입니다.
@@ -354,8 +355,62 @@ Vercel Production 환경의 `SUPABASE_URL`, `SUPABASE_SECRET_KEY`는 계속 서�
 - 평소 네트워크의 121건: `observe`
 - 다른 네트워크지만 정확히 120건: `observe`
 - 다른 네트워크의 121건: `propose_revocation / burst_read`이며 가명 사용자와 가상 기기 하나가 포함됩니다.
+- 기존 9단계 계약의 GET 121건도 `propose_revocation / burst_read`입니다.
 - 지역만 다른 대량 조회, 거부된 대량 조회, 두 기기에 나뉜 조회, 10분 밖 조회는 `observe`입니다.
 - 입력에 비밀값처럼 보이는 추가 필드가 있어도 탐지 결과에 노출되지 않습니다.
 - 6~8단계 판정기와 API 가상 검사는 기존 결과를 유지해야 합니다.
 
 `npm run detect:test`는 가상 사건 연습이며 실제 기기 회수, 운영 반 엔진 연결, 심판 통과를 증명하지 않습니다.
+
+## 10단계 저장점 — 백업에서 자료실을 되살립니다
+
+### 제작 1·2: 검증된 안전 정책 사본과 시험 정책 복원
+
+- 안전 정책 사본은 `restore/safe-policy.json`이며 9단계 최종 저장점 `2cc8dfd3897afde5a37eaee7c26bff05944a5181`의 `notes`, `detect`, `xdr-brute-force`, `xdr-web-injection` 정책 파일 Git 객체와 규칙·허용 경로를 기록합니다.
+- `npm run restore:preview`는 사본 형식, 사본 SHA-256, 사본 커밋이 현재 HEAD의 조상인지, 해당 커밋의 Git 정책 객체가 사본과 다시 일치하는지 모두 검증한 뒤에만 복원할 버전과 변경 범위를 보여 줍니다. 사본이 없거나 검증이 실패하면 차이를 보여 주지 않고 중단합니다.
+- `npm run restore:apply -- notes`는 기본적으로 미리보기만 합니다. 실제 파일 쓰기는 미리보기에 표시된 `--apply --confirm=restore-notes-<안전커밋>`을 함께 넣었을 때만 수행합니다.
+- 정책 복원은 지정한 서비스 파일만 되돌리고, `notes` 서비스에서는 안전 사본의 기존 허용 경로와 10단계 복구 경로를 함께 유지합니다. 다른 서비스 정책과 `xdr/alerts.log` 감사 이력의 해시가 바뀌면 오류로 중단합니다.
+- 이 도구는 로컬 개발 폴더의 시험 정책 파일만 다루며 커밋·푸시·배포·운영 DB 변경을 자동으로 하지 않습니다.
+
+정상 확인 순서:
+
+1. `npm run restore:preview` — 복원할 안전 버전과 서비스별 변경 범위를 먼저 확인합니다.
+2. `npm run restore:apply -- notes` — 실제 변경 없이 notes 복원 계획과 확인 문구를 확인합니다.
+3. 실제 침해 시험 정책을 되돌릴 때만 표시된 확인 문구를 넣어 적용합니다.
+4. 적용 직후 `git diff`로 바뀐 파일이 대상 서비스에 한정됐는지 확인합니다.
+5. `npm run fixture:8-api`로 A의 정상 자기 메모 요청이 유지되고 B의 A 메모 요청이 다시 거부되는지 확인합니다.
+
+현재 저장점에서는 실제 정책을 일부러 약하게 만든 뒤 복원하는 시험은 **미실행**입니다. 결과를 통과로 기록하지 않습니다.
+
+### 제작 3: 비공개 가상 메모 한 건 복원
+
+- 서비스: `notes`
+- 복구 경로: `POST /api/restore/notes/:id`
+- 설정: `aleph.config.json`의 `step`은 `10`, `restoreRoute`는 `POST /api/restore/notes/:id`이며 같은 값이 `allowedRoutes`에도 있습니다.
+- 서버는 기존 로그인 검증 뒤 비공개 `notes_backup` 사본에서 **로그인 사용자가 소유한 지정 ID 한 건만** 읽습니다. 백업 테이블은 브라우저 역할이 직접 읽을 수 없도록 준비해야 하며 서버 전용 키에서만 접근합니다.
+- 복구 전에 `public_id`, `owner_id`, `content_hash`를 모두 대조합니다. 내용 해시는 `sha256(UTF-8(제목 + "\n" + 본문))`의 64자리 소문자 16진수입니다.
+- 현재 메모가 이미 사본과 같으면 쓰지 않고 `restored: false`를 반환합니다. 다르면 그 한 건만 갱신하고, 삭제된 경우에는 같은 ID·소유자·제목·내용으로 한 건만 다시 넣은 뒤 ID·소유자·내용 해시를 다시 확인합니다.
+- 응답은 `{ id, restored, contentHash }`만 반환하며 메모 제목·본문·소유자·토큰을 내보내지 않습니다. 다른 메모와 `xdr/alerts.log`는 수정하지 않습니다.
+- `npm run fixture:10`은 가상 시험 계정 B의 메모만 사용해 B 소유 사본 검증, A의 B 사본 사용 거부, 변조 해시 거부, 복구 결과 ID·소유자·내용 해시 일치를 확인합니다. 실제 Supabase 복구나 심판 판정은 아닙니다.
+
+비공개 `notes_backup` 준비는 실제 DB 변경이므로 자동 실행하지 않습니다. Supabase에서 안전한 시점의 `notes`를 별도 비공개 사본으로 만들고 `public_id`, `owner_id`, `title`, `content`, 위 해시식으로 계산한 `content_hash`를 보관한 뒤, `anon`·`authenticated` 직접 권한이 없는지 확인해야 합니다. 이 실제 백업 준비와 배포된 주소에서 B 계정으로 복구 요청을 보내는 시험은 **미실행**입니다. 비밀번호나 토큰 값은 README·Git·로그에 적지 않습니다.
+
+### 제작 4: 복구 뒤 1~9단계 재확인 순서
+
+아래 결과 칸은 실제 복구 후 학생이 실행한 결과를 적는 자리입니다. 현재는 전부 **미실행**이며 임의로 통과 처리하지 않습니다.
+
+| 순서 | 확인 명령/요청 | 기대 결과 | 복구 뒤 결과 |
+|---|---|---|---|
+| 1 | `npm run restore:preview` | 안전 사본 검증 후 복원 버전과 남은 정책 차이 표시 | 미실행 |
+| 2 | `npm run decider:test` | 등록 기기 정상 요청 허용, 미등록 요청 거부 | 미실행 |
+| 3 | `npm run fixture:7` | 정상 요청 허용, 복합 이상 접속은 `step_up` | 미실행 |
+| 4 | `npm run fixture:8` | 메모 단건 허용 구역 유지, 목록·생성·미지 경로 거부 | 미실행 |
+| 5 | `npm run fixture:8-api` | A 자기 메모 정상, B의 A 메모 요청과 권한 위조 거부 | 미실행 |
+| 6 | `npm run detect:test` | 정상 사건 `observe`, 의심 사건만 `propose_revocation` | 미실행 |
+| 7 | `npm run xdr:run -- brute-force` | 기존 XDR 분류와 감사 흐름 유지 | 미실행 |
+| 8 | `npm run fixture:10` | B 복구 사본 ID·소유자·내용 해시 검증, A 사용 거부 | 미실행 |
+| 9 | `npm run build -- --local` | 공개 `data.json`은 계속 빈 메모 배열 | 미실행 |
+| 10 | 배포 뒤 비로그인 `POST /api/restore/notes/<가상 UUID>` | `401` 또는 `403` JSON 오류 | 미실행 |
+| 11 | 배포 뒤 B 본인 메모 한 건 복구 | 응답 ID·내용 해시가 B의 비공개 사본과 일치 | 미실행 |
+
+10단계 로컬 가상 시험이 통과해도 실제 DB 백업, 실제 정책 복구, Production 복구 성공이나 심판 통과를 의미하지 않습니다.
