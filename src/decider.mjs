@@ -78,6 +78,13 @@ function knownZoneRequest(request) {
       || typeof request?.service !== 'string' || typeof request?.method !== 'string'
       || !queryIsEmpty(request)) return false;
 
+  // 엔진이 본인 메모만 모아 주는 전용 읽기 경로는 정상 구역으로 허용합니다.
+  if (request.path === '/api/my/notes') {
+    return request.service === 'notes'
+      && request.method === 'GET'
+      && request.route === 'GET /api/my/notes';
+  }
+
   // 메모 생성은 서버가 로그인 사용자를 owner_id로 강제하므로 기존 기능을 유지합니다.
   if (NOTE_COLLECTION_PATH.test(request.path)) {
     const apiPrefix = request.path.startsWith('/api/') ? 'api/' : '';
