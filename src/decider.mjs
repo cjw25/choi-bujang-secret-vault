@@ -74,6 +74,33 @@ function routeForItem(apiPrefix, service, method) {
 }
 
 function knownZoneRequest(request) {
+
+   const ownNoteRead = request?.method === 'GET'
+    && (request?.route === 'GET /notes/:id'
+      || request?.route === 'GET /api/notes/:id');
+
+  if (ownNoteRead) {
+    if (request.service !== undefined && request.service !== 'notes') return false;
+
+    if (request.path !== undefined) {
+      if (typeof request.path !== 'string') return false;
+
+      const match = ITEM_PATH.exec(request.path);
+      if (!match || match[2].toLowerCase() !== 'notes') return false;
+
+      const routeHasApi = request.route === 'GET /api/notes/:id';
+      const pathHasApi = Boolean(match[1]);
+      if (routeHasApi !== pathHasApi) return false;
+    }
+
+    if (Object.hasOwn(request, 'queryLength')
+        || Object.hasOwn(request, 'querySha256')) {
+      if (!queryIsEmpty(request)) return false;
+    }
+
+    return true;
+  }
+  
   if (typeof request?.path !== 'string' || typeof request?.route !== 'string'
       || typeof request?.service !== 'string' || typeof request?.method !== 'string'
       || !queryIsEmpty(request)) return false;
