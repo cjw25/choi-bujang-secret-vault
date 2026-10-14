@@ -181,10 +181,15 @@ export function verifySnapshot() {
 }
 
 const same = (a, b) => canonical(a) === canonical(b);
-const listDiff = (current = [], safe = []) => ({
-  remove: current.filter((item) => !safe.includes(item)),
-  restore: safe.filter((item) => !current.includes(item)),
-});
+const listDiff = (current, safe) => {
+  const currentList = Array.isArray(current) ? current : [];
+  const safeList = Array.isArray(safe) ? safe : [];
+  return {
+    remove: currentList.filter((item) => !safeList.includes(item)),
+    restore: safeList.filter((item) => !currentList.includes(item)),
+    unreadable: !Array.isArray(current) || !Array.isArray(safe),
+  };
+};
 
 export function diffService(name, snapshot, now = policyNow()) {
   if (!Object.hasOwn(SERVICES, name)) throw new Error(`알 수 없는 서비스입니다: ${name}`);
@@ -203,8 +208,8 @@ export function diffService(name, snapshot, now = policyNow()) {
     out.routes = listDiff(current.allowedRoutes, safe.allowedRoutes);
   }
   out.changed = files.some((file) => file.state !== 'same')
-    || Boolean(out.rules && (out.rules.remove.length || out.rules.restore.length))
-    || Boolean(out.routes && (out.routes.remove.length || out.routes.restore.length));
+    || Boolean(out.rules && (out.rules.unreadable || out.rules.remove.length || out.rules.restore.length))
+    || Boolean(out.routes && (out.routes.unreadable || out.routes.remove.length || out.routes.restore.length));
   return out;
 }
 
@@ -216,8 +221,10 @@ export function describeService(diff) {
       ? `  파일 복원: ${file.path}`
       : `  파일 되돌림: ${file.path} (${file.current?.slice(0, 8)} -> ${file.safe.slice(0, 8)})`);
   }
+  if (diff.rules?.unreadable) lines.push('  규칙 이름: 현재 값을 읽지 못해 안전 사본으로 복원 필요');
   for (const rule of diff.rules?.remove ?? []) lines.push(`  규칙 제거: ${rule}`);
   for (const rule of diff.rules?.restore ?? []) lines.push(`  규칙 복원: ${rule}`);
+  if (diff.routes?.unreadable) lines.push('  허용 경로: 현재 값을 읽지 못해 안전 사본으로 복원 필요');
   for (const route of diff.routes?.remove ?? []) lines.push(`  허용 경로 제거: ${route}`);
   for (const route of diff.routes?.restore ?? []) lines.push(`  허용 경로 복원: ${route}`);
   return lines;
