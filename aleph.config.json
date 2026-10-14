@@ -10,7 +10,6 @@
     "audience": "authenticated"
   },
   "allowedRoutes": [
-    "POST /api/auth/login",
     "GET /api/notes/:id",
     "PUT /api/notes/:id",
     "DELETE /api/notes/:id",

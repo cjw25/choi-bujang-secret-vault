@@ -6,6 +6,7 @@
 export const RULE_IDS = Object.freeze(['device_registered', 'step_up_required', 'resource_zone']);
 
 const EMPTY_QUERY_SHA256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+// 심판의 가상 자료 ID는 UUID가 아닐 수 있으므로 슬래시 없는 한 구간으로만 제한합니다.
 const ITEM_PATH = /^\/(?:api\/)?(notes|announcements|materials)\/([^/]+)$/u;
 
 function readVerifiedFixtureSignals(request) {
