@@ -19,8 +19,8 @@ async function readJson(response) {
 }
 
 export async function runAttackChecks(config) {
-  if (![5, 6, 7].includes(config.step)) {
-    throw new Error('현재 공격 점검은 5~7단계 자료실 보호 흐름에 맞춰져 있습니다.');
+  if (![5, 6, 7, 8].includes(config.step)) {
+    throw new Error('현재 공격 점검은 5~8단계 자료실 보호 흐름에 맞춰져 있습니다.');
   }
 
   const app = appUrl(config);
@@ -52,7 +52,7 @@ export async function runAttackChecks(config) {
   const original = await fetch(config.originalApiUrl, options);
   const originalDeniedWithoutKey = [401, 403].includes(original.status);
 
-  return [
+  const attempts = [
     { attackId: 'anonymous_note_list_denied', expected: '비로그인 메모 목록 요청은 JSON 오류로 거부',
       observed: anonymousDenied ? `비로그인 요청 거부 확인 (HTTP ${anonymous.status})` : `예상과 다른 응답 (HTTP ${anonymous.status})` },
     { attackId: 'aleph_routes_available', expected: `/aleph.json step ${config.step}와 allowedRoutes 1개 이상`,
@@ -66,4 +66,26 @@ export async function runAttackChecks(config) {
     { attackId: 'original_api_no_key_denied', expected: '원본 자료 HTTPS 경로는 키 없는 직접 요청을 거부',
       observed: originalDeniedWithoutKey ? `원본 직접 요청 거부 확인 (HTTP ${original.status})` : `키 없는 원본 직접 요청이 예상과 다름 (HTTP ${original.status})` },
   ];
+
+  if (config.step >= 8) {
+    const fakeId = '11111111-1111-4111-8111-111111111111';
+    const announcement = await fetch(new URL(`/api/announcements/${fakeId}`, app), {
+      ...options,
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ title: 'fixture', body: 'fixture' }),
+    });
+    const announcementJson = await readJson(announcement);
+    const announcementDenied = [401, 403].includes(announcement.status)
+      && typeof announcementJson?.error === 'string' && announcementJson.error.trim().length > 0;
+    attempts.push({
+      attackId: 'anonymous_announcement_update_denied',
+      expected: '비로그인 강사 공지 수정 요청은 거부',
+      observed: announcementDenied
+        ? `비로그인 공지 수정 거부 확인 (HTTP ${announcement.status})`
+        : `예상과 다른 응답 (HTTP ${announcement.status})`,
+    });
+  }
+
+  return attempts;
 }
