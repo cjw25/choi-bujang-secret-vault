@@ -1,0 +1,42 @@
+{
+  "schema": "aleph.policy.snapshot.v1",
+  "commit": "2cc8dfd3897afde5a37eaee7c26bff05944a5181",
+  "services": {
+    "notes": {
+      "files": {
+        "src/decider.mjs": "3f2eed00982aa9cddc082ade04ddcbeca5fe6e52"
+      },
+      "ruleIds": [
+        "device_registered",
+        "step_up_required",
+        "resource_zone"
+      ],
+      "allowedRoutes": [
+        "GET /api/notes/:id",
+        "PUT /api/notes/:id",
+        "DELETE /api/notes/:id",
+        "GET /api/announcements/:id"
+      ]
+    },
+    "detect": {
+      "files": {
+        "src/detect.mjs": "a12b709a5e9109bf62243f94efb43df9ed62770c"
+      }
+    },
+    "xdr-brute-force": {
+      "files": {
+        "xdr/brute-force/decide.mjs": "fed5b13394c88bd60356a0b177c761ddc63f6eaa",
+        "xdr/brute-force/deny-rules.json": "2a879875ec24473e6585e368c3f4fa157e4861af",
+        "xdr/brute-force/patterns.json": "47bb88ce45eea306a91f06c6eee97bca2992205f"
+      }
+    },
+    "xdr-web-injection": {
+      "files": {
+        "xdr/web-injection/decide.mjs": "0cd9a00014ff248f0538f2ac39376d32ae9e0789",
+        "xdr/web-injection/deny-rules.json": "e9413a1145cba9c52dd7726b54d5f22f0d9350f1",
+        "xdr/web-injection/patterns.json": "65312f381abef7b1b0ac18a6493eca33fe143449"
+      }
+    }
+  },
+  "sha256": "2e52eec3ac7b2e5867fa63ece9ec8a361a0083c6b8e0a6becdf7e55e2adb0319"
+}

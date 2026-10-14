@@ -35,9 +35,8 @@ function observedFailure(error) {
 }
 
 export async function runAttackChecks(config) {
-  // 9단계도 5~8단계와 같은 공개 자료실 보호 점검을 그대로 이어갑니다.
-  if (![5, 6, 7, 8, 9].includes(config.step)) {
-    throw new Error('현재 공격 점검은 5~9단계 자료실 보호 흐름에 맞춰져 있습니다.');
+  if (![5, 6, 7, 8, 9, 10].includes(config.step)) {
+    throw new Error('현재 공격 점검은 5~10단계 자료실 보호 흐름에 맞춰져 있습니다.');
   }
 
   const app = appUrl(config);
@@ -55,7 +54,8 @@ export async function runAttackChecks(config) {
   const metadata = metadataResult.response;
   const metadataJson = await readJson(metadata);
   const metadataReady = Boolean(metadata) && metadata.ok && metadataJson?.step === config.step
-    && Array.isArray(config.allowedRoutes) && config.allowedRoutes.length > 0;
+    && Array.isArray(config.allowedRoutes) && config.allowedRoutes.length > 0
+    && (config.step < 10 || metadataJson?.restoreRoute === config.restoreRoute);
 
   const homeResult = await safeFetch(app, options);
   const home = homeResult.response;
@@ -84,7 +84,7 @@ export async function runAttackChecks(config) {
       observed: anonymousResult.error
         ? observedFailure(anonymousResult.error)
         : anonymousDenied ? `비로그인 요청 거부 확인 (HTTP ${anonymous.status})` : `예상과 다른 응답 (HTTP ${anonymous.status})` },
-    { attackId: 'aleph_routes_available', expected: `/aleph.json step ${config.step}와 allowedRoutes 1개 이상`,
+    { attackId: 'aleph_routes_available', expected: `/aleph.json step ${config.step}와 현재 허용 경로 확인`,
       observed: metadataResult.error
         ? observedFailure(metadataResult.error)
         : metadataReady ? `step ${config.step}와 허용 경로 확인` : `메타데이터 확인 실패 또는 단계 불일치 (HTTP ${metadata.status})` },
@@ -127,6 +127,33 @@ export async function runAttackChecks(config) {
         : announcementDenied
           ? `비로그인 공지 수정 거부 확인 (HTTP ${announcement.status})`
           : `예상과 다른 응답 (HTTP ${announcement.status})`,
+    });
+  }
+
+  if (config.step >= 10) {
+    const fakeId = '11111111-1111-4111-8111-111111111111';
+    const route = typeof config.restoreRoute === 'string' ? config.restoreRoute : '';
+    const [method, template] = route.split(' ');
+    const path = template?.replace(':id', fakeId);
+    const restoreResult = method === 'POST' && path
+      ? await safeFetch(new URL(path, app), {
+        ...options,
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+      })
+      : { response: null, error: 'invalid_restore_route' };
+    const restore = restoreResult.response;
+    const restoreJson = await readJson(restore);
+    const restoreDenied = Boolean(restore) && [401, 403].includes(restore.status)
+      && typeof restoreJson?.error === 'string' && restoreJson.error.trim().length > 0;
+    attempts.push({
+      attackId: 'anonymous_restore_denied',
+      expected: '비로그인 단일 메모 복구 요청은 거부',
+      observed: restoreResult.error
+        ? observedFailure(restoreResult.error)
+        : restoreDenied ? `비로그인 복구 요청 거부 확인 (HTTP ${restore.status})`
+          : `예상과 다른 응답 (HTTP ${restore.status})`,
     });
   }
 
