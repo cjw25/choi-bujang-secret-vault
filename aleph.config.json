@@ -11,12 +11,10 @@
   },
   "allowedRoutes": [
     "POST /api/auth/login",
-    "GET /api/notes",
-    "POST /api/notes",
     "GET /api/notes/:id",
     "PUT /api/notes/:id",
     "DELETE /api/notes/:id",
-    "PUT /api/announcements/:id"
+    "GET /api/announcements/:id"
   ],
   "originalApiUrl": "https://zjugvqxssegtpiqfncbw.supabase.co/rest/v1/notes",
   "restoreRoute": null
