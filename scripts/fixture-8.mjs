@@ -7,9 +7,11 @@ const EMPTY_QUERY_SHA256 = createHash('sha256').update('').digest('hex');
 const NONEMPTY_QUERY_SHA256 = createHash('sha256').update('mode=export').digest('hex');
 const NOTE_ID = '11111111-1111-4111-8111-111111111111';
 const NOTICE_ID = '22222222-2222-4222-8222-222222222222';
+const MATERIAL_ID = '33333333-3333-4333-8333-333333333333';
 const DEVICE_ID = 'a'.repeat(16);
 
-function request({ subjectId, service, method, path, route, queryLength = 0, querySha256 = EMPTY_QUERY_SHA256 }) {
+function request({ subjectId = 'student_a', service, method, path, route,
+  queryLength = 0, querySha256 = EMPTY_QUERY_SHA256 }) {
   return {
     schema: 'aleph.decision.v1',
     requestId: randomUUID(),
@@ -32,48 +34,23 @@ function request({ subjectId, service, method, path, route, queryLength = 0, que
   };
 }
 
-function grant({ subjectId, service, method, path, route }) {
-  return {
-    classId: 'class_fixture',
-    projectId: 'project_fixture',
-    subjectId,
-    deviceId: DEVICE_ID,
-    service,
-    method,
-    path,
-    route,
-    expiresAt: new Date(Date.now() + 60_000).toISOString(),
-  };
-}
-
 export async function runFixture8() {
-  const noteRead = {
-    service: 'notes', method: 'GET', path: `/notes/${NOTE_ID}`, route: 'GET /notes/:id',
-  };
-  const noteUpdate = {
-    service: 'notes', method: 'PUT', path: `/notes/${NOTE_ID}`, route: 'PUT /notes/:id',
-  };
-  const noticeUpdate = {
-    service: 'announcements', method: 'PUT', path: `/announcements/${NOTICE_ID}`,
-    route: 'PUT /announcements/:id',
-  };
-
-  const decide = createDecider([
-    grant({ subjectId: 'student_a', ...noteRead }),
-    grant({ subjectId: 'student_a', ...noteUpdate }),
-    grant({ subjectId: 'instructor_fixture', ...noticeUpdate }),
-  ]);
-
+  const decide = createDecider([]);
   const cases = [
-    ['A 자기 메모 읽기', request({ subjectId: 'student_a', ...noteRead }), 'allow'],
-    ['A 자기 메모 수정', request({ subjectId: 'student_a', ...noteUpdate }), 'allow'],
-    ['B의 A 메모 읽기', request({ subjectId: 'student_b', ...noteRead }), 'deny'],
-    ['일반 학생 공지 수정', request({ subjectId: 'student_a', ...noticeUpdate }), 'deny'],
-    ['강사 공지 수정', request({ subjectId: 'instructor_fixture', ...noticeUpdate }), 'allow'],
-    ['쿼리로 기능 선택', request({ subjectId: 'student_a', ...noteRead,
+    ['메모 한 건 읽기', request({ service: 'notes', method: 'GET', path: `/notes/${NOTE_ID}`, route: 'GET /notes/:id' }), 'allow'],
+    ['메모 한 건 수정', request({ service: 'notes', method: 'PUT', path: `/notes/${NOTE_ID}`, route: 'PUT /notes/:id' }), 'allow'],
+    ['메모 한 건 삭제', request({ service: 'notes', method: 'DELETE', path: `/notes/${NOTE_ID}`, route: 'DELETE /notes/:id' }), 'allow'],
+    ['메모 생성', request({ service: 'notes', method: 'POST', path: '/notes', route: 'POST /notes' }), 'allow'],
+    ['메모 전체 목록 조회', request({ service: 'notes', method: 'GET', path: '/notes', route: 'GET /notes' }), 'deny'],
+    ['공지 생성', request({ service: 'announcements', method: 'POST', path: '/announcements', route: 'POST /announcements' }), 'deny'],
+    ['공지 수정', request({ service: 'announcements', method: 'PUT', path: `/announcements/${NOTICE_ID}`, route: 'PUT /announcements/:id' }), 'deny'],
+    ['강사 자료 생성', request({ service: 'materials', method: 'POST', path: '/materials', route: 'POST /materials' }), 'deny'],
+    ['강사 자료 수정', request({ service: 'materials', method: 'PUT', path: `/materials/${MATERIAL_ID}`, route: 'PUT /materials/:id' }), 'deny'],
+    ['쿼리로 기능 선택', request({ service: 'notes', method: 'GET', path: `/notes/${NOTE_ID}`, route: 'GET /notes/:id',
       queryLength: 11, querySha256: NONEMPTY_QUERY_SHA256 }), 'deny'],
-    ['알 수 없는 export 경로', request({ subjectId: 'student_a', service: 'notes', method: 'GET',
+    ['알 수 없는 export 경로', request({ service: 'notes', method: 'GET',
       path: `/notes/${NOTE_ID}/export`, route: 'GET /notes/:id/export' }), 'deny'],
+    ['완전히 모르는 경로', request({ service: 'unknown', method: 'GET', path: '/unknown', route: 'GET /unknown' }), 'deny'],
   ];
 
   const results = [];
@@ -90,7 +67,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     for (const item of results) {
       process.stdout.write(`${item.passed ? '통과' : '확인 필요'} · ${item.name}: ${item.actual}\n`);
     }
-    process.stdout.write('이 명령은 서버/엔진이 검증해 공급한 가상 권한 목록으로 연습하며 실제 운영 권한 등록 증거가 아닙니다.\n');
+    process.stdout.write('이 명령은 계약의 경로·메서드 구역 규칙을 확인하는 로컬 가상 연습이며 실제 심판 판정이 아닙니다.\n');
     if (results.some((item) => !item.passed)) process.exitCode = 1;
   } catch (error) {
     process.stderr.write(`8단계 가상 구역 첫 오류: ${error.message}\n`);
