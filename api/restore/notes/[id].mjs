@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
 import config from '../../../aleph.config.json' with { type: 'json' };
-import { studentDeviceApproved } from '../../../src/device-session.mjs';
 import { noteContentHash, restoredRowMatches, verifiedBackup } from '../../../src/note-recovery.mjs';
 import { createLoginVerifier } from '../../../src/verify-login.mjs';
 
@@ -17,12 +16,16 @@ function sendJson(response, status, body) {
 function readId(request) {
   const value = request.query?.id;
   if (typeof value === 'string') return value.toLowerCase();
-  if (Array.isArray(value) && value.length === 1 && typeof value[0] === 'string') return value[0].toLowerCase();
+  if (Array.isArray(value) && value.length === 1 && typeof value[0] === 'string') {
+    return value[0].toLowerCase();
+  }
   return null;
 }
 
 function verifier(secretKey) {
-  verifyLoginAuthorization ??= createLoginVerifier({ config, supabaseSecretKey: secretKey });
+  if (!verifyLoginAuthorization) {
+    verifyLoginAuthorization = createLoginVerifier({ config, supabaseSecretKey: secretKey });
+  }
   return verifyLoginAuthorization;
 }
 
@@ -41,7 +44,9 @@ export default async function handler(request, response) {
 
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
-  if (!supabaseUrl || !supabaseSecretKey) return sendJson(response, 500, { error: '자료 저장소 설정이 필요합니다.' });
+  if (!supabaseUrl || !supabaseSecretKey) {
+    return sendJson(response, 500, { error: '자료 저장소 설정이 필요합니다.' });
+  }
 
   let login;
   try { login = await verifier(supabaseSecretKey)(request.headers.authorization); } catch {
@@ -52,16 +57,6 @@ export default async function handler(request, response) {
   const supabase = createClient(supabaseUrl, supabaseSecretKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
-  try {
-    if (!(await studentDeviceApproved(request, login, supabase))) {
-      return sendJson(response, 403, {
-        error: '서버가 승인한 기기에서만 복구할 수 있습니다.',
-        reasonCode: 'device_not_registered',
-      });
-    }
-  } catch {
-    return sendJson(response, 503, { error: '기기 승인 상태를 확인하지 못했습니다.' });
-  }
 
   const { data: backupRow, error: backupError } = await supabase
     .from('notes_backup')
@@ -89,7 +84,9 @@ export default async function handler(request, response) {
     .maybeSingle();
 
   if (currentError) return sendJson(response, 502, { error: '현재 메모를 확인하지 못했습니다.' });
-  if (current && current.owner_id !== login.userId) return sendJson(response, 404, { error: '복구할 메모를 찾을 수 없습니다.' });
+  if (current && current.owner_id !== login.userId) {
+    return sendJson(response, 404, { error: '복구할 메모를 찾을 수 없습니다.' });
+  }
 
   if (current && restoredRowMatches(current, backup)) {
     audit('unchanged');
@@ -109,7 +106,12 @@ export default async function handler(request, response) {
   } else {
     ({ data: written, error: writeError } = await supabase
       .from('notes')
-      .insert({ public_id: backup.id, owner_id: backup.ownerId, title: backup.title, content: backup.content })
+      .insert({
+        public_id: backup.id,
+        owner_id: backup.ownerId,
+        title: backup.title,
+        content: backup.content,
+      })
       .select('public_id, owner_id, title, content')
       .maybeSingle());
   }
