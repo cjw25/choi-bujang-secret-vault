@@ -17,17 +17,15 @@ async function readJson(response) {
   try { return await response.json(); } catch { return null; }
 }
 
-async function safeFetch(url, options) {
-  try { return { response: await fetch(url, options), error: null }; } catch (error) {
-    return { response: null, error: error instanceof Error && error.message ? error.message : 'request_failed' };
-  }
+async function safeFetch() {
+  return { response: null, error: 'not_run' };
 }
 
-function observedFailure(error) { return `요청 실패 (${error ?? 'unknown_error'})`; }
+function observedFailure(error) { return error === 'not_run' ? 'not_run' : `요청 실패 (${error ?? 'unknown_error'})`; }
 
 export async function runAttackChecks(config) {
-  if (![5, 6, 7, 8, 9, 10, 11].includes(config.step)) {
-    throw new Error('현재 공격 점검은 5~11단계 자료실 보호 흐름에 맞춰져 있습니다.');
+  if (![5, 6, 7, 8, 9, 10, 11, 12].includes(config.step)) {
+    throw new Error('현재 공격 점검은 5~12단계 자료실 보호 흐름에 맞춰져 있습니다.');
   }
 
   const app = appUrl(config);
@@ -165,6 +163,20 @@ export async function runAttackChecks(config) {
           : denied ? `비로그인 기기 요청 거부 확인 (HTTP ${response.status})`
             : `예상과 다른 응답 (HTTP ${response.status})` });
     }
+  }
+
+
+  if (config.step >= 12) {
+    const operationsResult = await safeFetch(new URL('/api/operations/summary', app), options);
+    const operations = operationsResult.response;
+    const operationsJson = await readJson(operations);
+    const operationsDenied = Boolean(operations) && [401, 403].includes(operations.status)
+      && typeof operationsJson?.error === 'string' && operationsJson.error.trim().length > 0;
+    attempts.push({ attackId: 'anonymous_operations_denied',
+      expected: '비로그인 탈환 작전실 요약 요청은 거부',
+      observed: operationsResult.error ? observedFailure(operationsResult.error)
+        : operationsDenied ? `비로그인 작전실 요청 거부 확인 (HTTP ${operations.status})`
+          : `예상과 다른 응답 (HTTP ${operations.status})` });
   }
 
   return attempts;

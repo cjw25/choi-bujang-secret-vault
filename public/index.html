@@ -34,12 +34,22 @@
     strong { display: block; font-size: 18px; margin-bottom: 5px; }
     li span { color: #bfd0e5; }
     li div { margin-top: 14px; }
+    .ops-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin: 14px 0 20px; }
+    .ops-item { border: 1px solid #51667c; border-radius: 10px; padding: 12px; background: #101a28; }
+    .ops-item strong { font-size: 15px; }
+    .table-wrap { overflow-x: auto; margin: 12px 0 18px; }
+    table { width: 100%; border-collapse: collapse; min-width: 760px; font-size: 13px; }
+    th, td { border: 1px solid #51667c; padding: 8px; text-align: left; vertical-align: top; }
+    th { background: #101a28; }
+    .status-not-run { color: #ffe39a; }
+    .status-pass { color: #9ee6b5; }
+    .status-fail { color: #ffb8b8; }
     [hidden] { display: none !important; }
   </style>
 </head>
 <body>
   <main>
-    <div class="eyebrow">BYTE BACK · 11단계 접속 앱</div>
+    <div class="eyebrow">BYTE BACK · 12단계 탈환 작전실</div>
     <h1>내 자료실</h1>
 
     <section class="card" aria-labelledby="app-title">
@@ -97,6 +107,37 @@
       </form>
       <p id="note-message" class="message" aria-live="polite"></p>
     </section>
+
+    <section id="operations-card" class="card" hidden aria-labelledby="operations-title">
+      <div class="status-row">
+        <h2 id="operations-title">탈환 작전실</h2>
+        <span id="operations-evidence" class="badge">API 확인 전</span>
+      </div>
+      <p>판정기 규칙, 탐지 사건, 회수 상태, 복구 버전은 실제 API 실측과 미실행을 구분해 표시합니다. 가상 메모 본문은 이 작전실에 표시하지 않습니다.</p>
+      <div id="operations-summary" class="ops-grid"></div>
+      <h3>가린 서버 기록</h3>
+      <p id="records-match" class="message"></p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>종류</th><th>가린 ID</th><th>상태</th><th>시각</th></tr></thead>
+          <tbody id="server-records"><tr><td colspan="4">API 확인 전</td></tr></tbody>
+        </table>
+      </div>
+      <h3>1~11단계 41종 확인표</h3>
+      <p>처음에는 41종 모두 <b>미실행</b>입니다. 아래 안전 점검은 현재 승인 세션으로 정상 요청과 금지 요청 두 건만 실제 API로 실측하며, 나머지는 임의로 통과 처리하지 않습니다.</p>
+      <button id="stage12-check-button" type="button">정상·금지 API 2건 실측</button>
+      <p id="stage12-check-message" class="message" aria-live="polite"></p>
+      <div class="status-row">
+        <span id="checks-measured" class="badge">실측 0</span>
+        <span id="checks-not-run" class="badge">미실행 41</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>ID</th><th>단계</th><th>구분</th><th>요청</th><th>기대</th><th>실제 API</th><th>요청 ID</th><th>확인 시각</th></tr></thead>
+          <tbody id="stage12-checks"><tr><td colspan="8">점검표를 불러오는 중</td></tr></tbody>
+        </table>
+      </div>
+    </section>
   </main>
 
 <script type="module">
@@ -122,13 +163,167 @@ const noteBody = document.querySelector('#note-body');
 const editorTitle = document.querySelector('#editor-title');
 const cancelEdit = document.querySelector('#cancel-edit');
 const noteMessage = document.querySelector('#note-message');
+const operationsCard = document.querySelector('#operations-card');
+const operationsEvidence = document.querySelector('#operations-evidence');
+const operationsSummary = document.querySelector('#operations-summary');
+const recordsMatch = document.querySelector('#records-match');
+const serverRecords = document.querySelector('#server-records');
+const stage12CheckButton = document.querySelector('#stage12-check-button');
+const stage12CheckMessage = document.querySelector('#stage12-check-message');
+const stage12ChecksBody = document.querySelector('#stage12-checks');
+const checksMeasured = document.querySelector('#checks-measured');
+const checksNotRun = document.querySelector('#checks-not-run');
+let stage12Checks = [];
+
+function statusText(item) {
+  if (item.status === 'pass') return '실측 통과';
+  if (item.status === 'fail') return '실측 불일치';
+  return '미실행';
+}
+
+function renderStage12Checks() {
+  const rows = stage12Checks.map(item => {
+    const row = document.createElement('tr');
+    const values = [
+      item.id,
+      String(item.step),
+      item.kind === 'forbidden' ? '금지' : '정상',
+      item.request,
+      item.expected,
+      item.status === 'not_run' ? '미실행' : `${statusText(item)} · ${item.actualApiResult}`,
+      item.requestId ?? '—',
+      item.checkedAt ?? '—',
+    ];
+    for (const value of values) {
+      const cell = document.createElement('td');
+      cell.textContent = value;
+      row.append(cell);
+    }
+    row.className = item.status === 'pass' ? 'status-pass'
+      : item.status === 'fail' ? 'status-fail' : 'status-not-run';
+    return row;
+  });
+  stage12ChecksBody.replaceChildren(...rows);
+  const measured = stage12Checks.filter(item => item.status !== 'not_run').length;
+  checksMeasured.textContent = `실측 ${measured}`;
+  checksNotRun.textContent = `미실행 ${stage12Checks.length - measured}`;
+}
+
+async function loadStage12Catalog() {
+  const response = await fetch('/stage12-checks.json', { cache: 'no-store' });
+  const data = await jsonResponse(response);
+  if (!response.ok || !Array.isArray(data.checks) || data.checks.length !== 41) {
+    throw new Error('41종 점검표를 불러오지 못했습니다.');
+  }
+  stage12Checks = data.checks.map(item => ({ ...item }));
+  renderStage12Checks();
+}
+
+function addSummaryItem(label, value) {
+  const box = document.createElement('div');
+  box.className = 'ops-item';
+  const title = document.createElement('strong');
+  title.textContent = label;
+  const text = document.createElement('span');
+  text.textContent = value;
+  box.append(title, text);
+  operationsSummary.append(box);
+}
+
+function applyMeasuredChecks(measured) {
+  if (!Array.isArray(measured)) return;
+  for (const result of measured) {
+    const row = stage12Checks.find(item => item.id === result.id);
+    if (!row) continue;
+    row.status = result.status;
+    row.actualApiResult = result.actualApiResult;
+    row.requestId = result.requestId;
+    row.checkedAt = result.checkedAt;
+  }
+  renderStage12Checks();
+}
+
+function renderOperationsSummary(data) {
+  operationsSummary.replaceChildren();
+  addSummaryItem('판정기 규칙', `${data.decider.ruleCount}개 · ${data.decider.ruleIds.join(', ')}`);
+  addSummaryItem('탐지 사건', data.detection.evidence === 'not_run' ? '미실행' : String(data.detection.actualApiEvents));
+  addSummaryItem('회수 상태', data.revocation.evidence === 'not_run' ? '미실행' : data.revocation.state);
+  addSummaryItem('복구 버전', `${data.restore.version.slice(0, 12)} · 실행 ${data.restore.execution === 'not_run' ? '미실행' : data.restore.execution}`);
+  addSummaryItem('기기 기록', `전체 ${data.serverState.credentials.total} · 승인 ${data.serverState.credentials.approved} · 대기 ${data.serverState.credentials.pending}`);
+  addSummaryItem('승인 세션', `전체 ${data.serverState.sessions.total} · 활성 ${data.serverState.sessions.active} · 만료 ${data.serverState.sessions.expired}`);
+
+  const rows = data.serverState.maskedRecords.map(item => {
+    const row = document.createElement('tr');
+    const at = item.createdAt ?? item.expiresAt ?? '—';
+    for (const value of [item.type, item.id, item.status, at]) {
+      const cell = document.createElement('td');
+      cell.textContent = value;
+      row.append(cell);
+    }
+    return row;
+  });
+  if (rows.length) serverRecords.replaceChildren(...rows);
+  else {
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = 4;
+    cell.textContent = '표시할 서버 기록이 없습니다.';
+    row.append(cell);
+    serverRecords.replaceChildren(row);
+  }
+
+  const records = data.serverState.maskedRecords;
+  const credentialTotal = records.filter(item => item.type === 'device_credential').length;
+  const approved = records.filter(item => item.type === 'device_credential' && item.status === 'approved').length;
+  const pending = records.filter(item => item.type === 'device_credential' && item.status === 'pending').length;
+  const sessionTotal = records.filter(item => item.type === 'device_session').length;
+  const active = records.filter(item => item.type === 'device_session' && item.status === 'active').length;
+  const expired = records.filter(item => item.type === 'device_session' && item.status === 'expired').length;
+  const match = credentialTotal === data.serverState.credentials.total
+    && approved === data.serverState.credentials.approved
+    && pending === data.serverState.credentials.pending
+    && sessionTotal === data.serverState.sessions.total
+    && active === data.serverState.sessions.active
+    && expired === data.serverState.sessions.expired;
+  recordsMatch.textContent = match ? '요약 수치와 가린 서버 기록이 일치합니다.' : '요약 수치와 서버 기록이 일치하지 않습니다.';
+  recordsMatch.classList.toggle('ok', match);
+  operationsEvidence.textContent = `실제 API · ${data.requestId} · ${data.checkedAt}`;
+  operationsEvidence.classList.add('ok');
+  applyMeasuredChecks(data.measuredChecks);
+}
+
+async function loadOperationsSummary(measure = false) {
+  if (!deviceApproved) return;
+  const suffix = measure ? '?measure=1' : '';
+  const data = await apiRequest(`/api/operations/summary${suffix}`);
+  renderOperationsSummary(data);
+  operationsCard.hidden = false;
+}
+
+stage12CheckButton.addEventListener('click', async () => {
+  stage12CheckButton.disabled = true;
+  stage12CheckMessage.textContent = '정상·금지 요청을 실제 API로 확인 중입니다.';
+  stage12CheckMessage.classList.remove('ok');
+  try {
+    await loadOperationsSummary(true);
+    stage12CheckMessage.textContent = '정상 1건과 금지 1건을 실측했습니다. 나머지 시험은 미실행으로 유지합니다.';
+    stage12CheckMessage.classList.add('ok');
+  } catch (error) {
+    stage12CheckMessage.textContent = error.message;
+  } finally {
+    stage12CheckButton.disabled = false;
+  }
+});
+
 let currentSession = null;
 let deviceApproved = false;
 let editingId = null;
 let deferredInstallPrompt = null;
+void loadStage12Catalog().catch(error => { stage12CheckMessage.textContent = error.message; });
 
 function clearProtectedView(message = '기기 승인 확인 후 자료를 볼 수 있습니다.') {
   resetEditor();
+  operationsCard.hidden = true;
   noteEditor.hidden = true;
   const item = document.createElement('li');
   item.textContent = message;
@@ -335,6 +530,7 @@ async function loadNotes() {
     setDeviceState('approved', '서버가 이 기기를 승인된 기기로 확인했습니다.');
     noteEditor.hidden = false;
     renderNotes(data.notes);
+    await loadOperationsSummary();
   } catch (error) {
     if (error.status === 403 && error.data?.reasonCode === 'device_not_registered') {
       deviceApproved = false;
@@ -349,6 +545,9 @@ async function loadNotes() {
 function showSession(session) {
   currentSession = session;
   deviceApproved = false;
+  operationsCard.hidden = true;
+  operationsEvidence.textContent = 'API 확인 전';
+  operationsEvidence.classList.remove('ok');
   const loggedIn = Boolean(session?.access_token);
   signedOut.hidden = loggedIn;
   signedIn.hidden = !loggedIn;

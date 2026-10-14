@@ -16,7 +16,8 @@
     "restore:snapshot": "node scripts/restore-snapshot.mjs",
     "restore:preview": "node scripts/restore-preview.mjs",
     "restore:apply": "node scripts/restore-apply.mjs",
-    "xdr:run": "node scripts/xdr-run.mjs"
+    "xdr:run": "node scripts/xdr-run.mjs",
+    "fixture:12": "node scripts/fixture-12.mjs"
   },
   "engines": {
     "node": ">=22"
