@@ -6,9 +6,7 @@
 export const RULE_IDS = Object.freeze(['device_registered', 'step_up_required', 'resource_zone']);
 
 const EMPTY_QUERY_SHA256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
-const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
-const ITEM_PATH = new RegExp(`^/(api/)?(notes|announcements|materials)/(${UUID})$`, 'iu');
-const NOTE_COLLECTION_PATH = /^\/(?:api\/)?notes$/u;
+const ITEM_PATH = /^\/(?:api\/)?(notes|announcements|materials)\/([^/]+)$/u;
 
 function readVerifiedFixtureSignals(request) {
   const signals = request?.signals;
@@ -69,75 +67,33 @@ function queryIsEmpty(request) {
   return request?.queryLength === 0 && request?.querySha256 === EMPTY_QUERY_SHA256;
 }
 
-function routeForItem(apiPrefix, service, method) {
-  return `${method} /${apiPrefix}${service}/:id`;
+function itemRouteMatches(route, service, method) {
+  return route === `${method} /${service}/:id`
+    || route === `${method} /api/${service}/:id`;
 }
 
 function knownZoneRequest(request) {
-
-   const ownNoteRead = request?.method === 'GET'
-    && (request?.route === 'GET /notes/:id'
-      || request?.route === 'GET /api/notes/:id');
-
-  if (ownNoteRead) {
-    if (request.service !== undefined && request.service !== 'notes') return false;
-
-    if (request.path !== undefined) {
-      if (typeof request.path !== 'string') return false;
-
-      const match = ITEM_PATH.exec(request.path);
-      if (!match || match[2].toLowerCase() !== 'notes') return false;
-
-      const routeHasApi = request.route === 'GET /api/notes/:id';
-      const pathHasApi = Boolean(match[1]);
-      if (routeHasApi !== pathHasApi) return false;
-    }
-
-    if (Object.hasOwn(request, 'queryLength')
-        || Object.hasOwn(request, 'querySha256')) {
-      if (!queryIsEmpty(request)) return false;
-    }
-
-    return true;
-  }
-  
   if (typeof request?.path !== 'string' || typeof request?.route !== 'string'
       || typeof request?.service !== 'string' || typeof request?.method !== 'string'
       || !queryIsEmpty(request)) return false;
 
-  // 엔진이 본인 메모만 모아 주는 전용 읽기 경로는 정상 구역으로 허용합니다.
-  if (request.path === '/api/my/notes') {
-    return request.service === 'notes'
-      && request.method === 'GET'
-      && request.route === 'GET /api/my/notes';
-  }
-
-  // 메모 생성은 서버가 로그인 사용자를 owner_id로 강제하므로 기존 기능을 유지합니다.
-  if (NOTE_COLLECTION_PATH.test(request.path)) {
-    const apiPrefix = request.path.startsWith('/api/') ? 'api/' : '';
-    return request.service === 'notes'
-      && request.method === 'POST'
-      && request.route === `POST /${apiPrefix}notes`;
-  }
-
   const match = ITEM_PATH.exec(request.path);
   if (!match) return false;
 
-  const apiPrefix = match[1] ? 'api/' : '';
-  const service = match[2].toLowerCase();
+  const service = match[1].toLowerCase();
   if (request.service !== service) return false;
 
   if (service === 'notes') {
     if (!['GET', 'PUT', 'DELETE'].includes(request.method)) return false;
-    return request.route === routeForItem(apiPrefix, service, request.method);
+    return itemRouteMatches(request.route, service, request.method);
   }
 
-  // 현재 요청 계약에는 강사 역할이 없으므로 공지/강사 자료 쓰기는 누구에게도 허용하지 않습니다.
-  if (service === 'announcements' || service === 'materials') {
+  if (service === 'announcements') {
     return request.method === 'GET'
-      && request.route === routeForItem(apiPrefix, service, 'GET');
+      && itemRouteMatches(request.route, service, 'GET');
   }
 
+  // 강사 자료는 판정기에서 모두 거부합니다.
   return false;
 }
 
