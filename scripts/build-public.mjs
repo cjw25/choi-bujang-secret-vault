@@ -7,7 +7,7 @@ const source = resolve(root, 'data.json');
 const output = resolve(root, 'public', 'data.json');
 const config = JSON.parse(await readFile(resolve(root, 'aleph.config.json'), 'utf8'));
 
-// 9단계도 앞 단계와 같은 공개 data.json 보호 흐름을 그대로 사용합니다.
+// 9단계도 앞 단계와 같은 공개 data.json 보호 흐름을 그대로 유지합니다.
 if (![2, 3, 4, 5, 6, 7, 8, 9].includes(config.step)) {
   throw new Error('현재 빌드 흐름은 2~9단계 자료 보호 흐름에 맞춰져 있습니다.');
 }

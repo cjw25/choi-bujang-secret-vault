@@ -67,7 +67,7 @@ export function detect(events) {
   const suspicious = findSuspiciousBurst(events);
   if (!suspicious) return { action: 'observe' };
 
-  // 9단계에서는 실제 회수하지 않고 확인된 가상 기기 한 개에 대한 제안만 반환합니다.
+  // 9단계는 실제 회수 대신 확인된 가상 기기 한 개에 대한 제안만 반환합니다.
   return {
     action: 'propose_revocation',
     reasonCode: 'burst_read',

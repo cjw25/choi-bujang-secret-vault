@@ -35,6 +35,7 @@ function observedFailure(error) {
 }
 
 export async function runAttackChecks(config) {
+  // 9단계도 5~8단계와 같은 공개 자료실 보호 점검을 그대로 이어갑니다.
   if (![5, 6, 7, 8, 9].includes(config.step)) {
     throw new Error('현재 공격 점검은 5~9단계 자료실 보호 흐름에 맞춰져 있습니다.');
   }

@@ -31,7 +31,7 @@ const proposal = {
   action: 'propose_revocation', reasonCode: 'burst_read', subject, deviceId,
 };
 
-// 정상 사건 보존과 복합 의심 사건만의 회수 제안을 함께 회귀 검사합니다.
+// 9단계 정상 사건 보존과 복합 의심 사건만의 회수 제안을 함께 회귀 검사합니다.
 const cases = [
   { name: '정상 조회 30건', events: reads(30), expected: { action: 'observe' } },
   { name: '평소 네트워크의 121건', events: reads(121), expected: { action: 'observe' } },
