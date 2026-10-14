@@ -1,12 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import config from '../../aleph.config.json' with { type: 'json' };
 import { hasForbiddenAuthorityFields, verifyOwnedNote } from '../../src/api-resource-policy.mjs';
+import { studentDeviceApproved } from '../../src/device-session.mjs';
 import { noteResourceId } from '../../src/resource-id.mjs';
 import { createLoginVerifier } from '../../src/verify-login.mjs';
 
-const UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
-
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 let verifyLoginAuthorization = null;
 
 function sendJson(response, status, body) {
@@ -17,95 +16,59 @@ function sendJson(response, status, body) {
 }
 
 function getLoginVerifier(supabaseSecretKey) {
-  if (!verifyLoginAuthorization) {
-    verifyLoginAuthorization = createLoginVerifier({
-      config,
-      supabaseSecretKey,
-    });
-  }
-
+  if (!verifyLoginAuthorization) verifyLoginAuthorization = createLoginVerifier({ config, supabaseSecretKey });
   return verifyLoginAuthorization;
 }
 
 function readBody(request) {
-  if (request.body && typeof request.body === 'object') {
-    return request.body;
-  }
-
+  if (request.body && typeof request.body === 'object') return request.body;
   if (typeof request.body === 'string') {
-    try {
-      return JSON.parse(request.body);
-    } catch {
-      return null;
-    }
+    try { return JSON.parse(request.body); } catch { return null; }
   }
-
   return null;
 }
 
 function readId(request) {
   const value = request.query?.id;
-
-  if (typeof value === 'string') {
-    return value.toLowerCase();
-  }
-
-  if (Array.isArray(value) && value.length === 1 && typeof value[0] === 'string') {
-    return value[0].toLowerCase();
-  }
-
+  if (typeof value === 'string') return value.toLowerCase();
+  if (Array.isArray(value) && value.length === 1 && typeof value[0] === 'string') return value[0].toLowerCase();
   return null;
 }
 
 export default async function handler(request, response) {
   if (!['GET', 'PUT', 'DELETE'].includes(request.method)) {
     response.setHeader('Allow', 'GET, PUT, DELETE');
-    return sendJson(response, 405, {
-      error: 'GET, PUT 또는 DELETE 요청만 허용됩니다.',
-    });
+    return sendJson(response, 405, { error: 'GET, PUT 또는 DELETE 요청만 허용됩니다.' });
   }
 
   const id = readId(request);
-
-  if (!id || !UUID.test(id)) {
-    return sendJson(response, 400, {
-      error: '올바른 메모 UUID가 필요합니다.',
-    });
-  }
+  if (!id || !UUID.test(id)) return sendJson(response, 400, { error: '올바른 메모 UUID가 필요합니다.' });
 
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
-
-  if (!supabaseUrl || !supabaseSecretKey) {
-    return sendJson(response, 500, {
-      error: '자료 저장소 설정이 필요합니다.',
-    });
-  }
+  if (!supabaseUrl || !supabaseSecretKey) return sendJson(response, 500, { error: '자료 저장소 설정이 필요합니다.' });
 
   let login;
-
   try {
-    const verify = getLoginVerifier(supabaseSecretKey);
-    login = await verify(request.headers.authorization);
+    login = await getLoginVerifier(supabaseSecretKey)(request.headers.authorization);
   } catch {
-    return sendJson(response, 500, {
-      error: '로그인 검증 설정을 확인해 주세요.',
-    });
+    return sendJson(response, 500, { error: '로그인 검증 설정을 확인해 주세요.' });
   }
-
-  if (!login) {
-    return sendJson(response, 401, {
-      error: '로그인이 필요합니다.',
-    });
-  }
+  if (!login) return sendJson(response, 401, { error: '로그인이 필요합니다.' });
 
   const supabase = createClient(supabaseUrl, supabaseSecretKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
+  try {
+    if (!(await studentDeviceApproved(request, login, supabase))) {
+      return sendJson(response, 403, {
+        error: '서버가 승인한 기기에서만 자료를 볼 수 있습니다.',
+        reasonCode: 'device_not_registered',
+      });
+    }
+  } catch {
+    return sendJson(response, 503, { error: '기기 승인 상태를 확인하지 못했습니다.' });
+  }
 
   const ownership = await verifyOwnedNote(supabase, login.userId, id);
   if (!ownership.allowed) {
@@ -117,26 +80,10 @@ export default async function handler(request, response) {
   }
 
   if (request.method === 'GET') {
-    const { data, error } = await supabase
-      .from('notes')
-      .select('public_id, title, content')
-      .eq('public_id', id)
-      .eq('owner_id', login.userId)
-      .maybeSingle();
-
-    if (error) {
-      return sendJson(response, 502, {
-        error: '자료를 불러오지 못했습니다.',
-      });
-    }
-
-    if (!data) {
-      return sendJson(response, 404, {
-        error: '메모를 찾을 수 없습니다.',
-        reasonCode: 'resource_denied',
-      });
-    }
-
+    const { data, error } = await supabase.from('notes')
+      .select('public_id, title, content').eq('public_id', id).eq('owner_id', login.userId).maybeSingle();
+    if (error) return sendJson(response, 502, { error: '자료를 불러오지 못했습니다.' });
+    if (!data) return sendJson(response, 404, { error: '메모를 찾을 수 없습니다.', reasonCode: 'resource_denied' });
     return sendJson(response, 200, {
       id: data.public_id,
       resourceId: noteResourceId(data.public_id),
@@ -147,58 +94,21 @@ export default async function handler(request, response) {
 
   if (request.method === 'PUT') {
     const body = readBody(request);
-
-    if (!body) {
-      return sendJson(response, 400, {
-        error: 'title과 body가 필요합니다.',
-      });
-    }
-
+    if (!body) return sendJson(response, 400, { error: 'title과 body가 필요합니다.' });
     if (hasForbiddenAuthorityFields(body)) {
-      return sendJson(response, 403, {
-        error: '권한은 서버에서 확인합니다.',
-        reasonCode: 'resource_denied',
-      });
+      return sendJson(response, 403, { error: '권한은 서버에서 확인합니다.', reasonCode: 'resource_denied' });
     }
-
     if (typeof body.title !== 'string' || typeof body.body !== 'string') {
-      return sendJson(response, 400, {
-        error: 'title과 body가 필요합니다.',
-      });
+      return sendJson(response, 400, { error: 'title과 body가 필요합니다.' });
     }
-
     const title = body.title.trim();
-
-    if (!title) {
-      return sendJson(response, 400, {
-        error: 'title이 비어 있습니다.',
-      });
-    }
-
-    const { data, error } = await supabase
-      .from('notes')
-      .update({
-        title,
-        content: body.body,
-      })
-      .eq('public_id', id)
-      .eq('owner_id', login.userId)
-      .select('public_id, title, content')
-      .maybeSingle();
-
-    if (error) {
-      return sendJson(response, 502, {
-        error: '메모를 수정하지 못했습니다.',
-      });
-    }
-
-    if (!data) {
-      return sendJson(response, 404, {
-        error: '메모를 찾을 수 없습니다.',
-        reasonCode: 'resource_denied',
-      });
-    }
-
+    if (!title) return sendJson(response, 400, { error: 'title이 비어 있습니다.' });
+    const { data, error } = await supabase.from('notes')
+      .update({ title, content: body.body })
+      .eq('public_id', id).eq('owner_id', login.userId)
+      .select('public_id, title, content').maybeSingle();
+    if (error) return sendJson(response, 502, { error: '메모를 수정하지 못했습니다.' });
+    if (!data) return sendJson(response, 404, { error: '메모를 찾을 수 없습니다.', reasonCode: 'resource_denied' });
     return sendJson(response, 200, {
       id: data.public_id,
       resourceId: noteResourceId(data.public_id),
@@ -207,27 +117,10 @@ export default async function handler(request, response) {
     });
   }
 
-  const { data, error } = await supabase
-    .from('notes')
-    .delete()
-    .eq('public_id', id)
-    .eq('owner_id', login.userId)
-    .select('public_id')
-    .maybeSingle();
-
-  if (error) {
-    return sendJson(response, 502, {
-      error: '메모를 삭제하지 못했습니다.',
-    });
-  }
-
-  if (!data) {
-    return sendJson(response, 404, {
-      error: '메모를 찾을 수 없습니다.',
-      reasonCode: 'resource_denied',
-    });
-  }
-
+  const { data, error } = await supabase.from('notes').delete()
+    .eq('public_id', id).eq('owner_id', login.userId).select('public_id').maybeSingle();
+  if (error) return sendJson(response, 502, { error: '메모를 삭제하지 못했습니다.' });
+  if (!data) return sendJson(response, 404, { error: '메모를 찾을 수 없습니다.', reasonCode: 'resource_denied' });
   response.status(204);
   response.setHeader('Cache-Control', 'no-store');
   return response.end();
