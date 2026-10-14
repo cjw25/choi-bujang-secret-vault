@@ -28,3 +28,20 @@ npm run xdr:run -- web-injection
 ```text
 block=8 alert=9 record=9
 ```
+
+
+## known-cve (xdr-03)
+
+`known-cve`는 CVE-2021-44228(Log4Shell) 요청 형태와 MITRE ATT&CK T1190 근거를 사용해 가상 Wazuh 경보를 분류합니다. `decide.mjs`는 독립 실행되며 명확한 원격 JNDI 조회는 `block`, 애매한 취약점·JNDI 참조는 `alert`, 정상 이벤트는 `record`로 반환합니다.
+
+```bat
+npm run xdr:run -- known-cve
+```
+
+정상 결과:
+
+```text
+block=8 alert=8 record=8
+```
+
+정상 이벤트 block은 0건입니다. 차단 후보 6개는 `known-cve/deny-rules.json`에 `simulation_only`로 기록되며 만료 시각과 근거 경보 번호를 포함합니다. `block`·`alert` 로그에는 URL·출발 주소·계정을 기록하지 않습니다.

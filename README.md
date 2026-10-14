@@ -537,3 +537,19 @@ Production 확인:
 5. 41종 가운데 실행하지 않은 행이 임의로 통과 처리되지 않았는지 확인합니다.
 
 `fixture:12`와 기존 fixture는 로컬 가상 연습입니다. Production API 실측, 실제 접속 회수, 실제 복구 실행, 운영 심판 통과를 대신하지 않습니다.
+
+
+## 보너스 xdr-03 저장점 — 알려진 취약점 악용을 잡아 냅니다
+
+- 입력: `xdr/fixtures/known-cve.json` 가상 Wazuh 경보 24건
+- 근거: CVE-2021-44228(Log4Shell), MITRE ATT&CK T1190
+- `xdr/known-cve/read-alerts.mjs`는 시각·출발 주소·계정·규칙 수준·설명 다섯 필드만 추출하며 비밀값처럼 보이는 설명은 가립니다.
+- `xdr/known-cve/decide.mjs`는 import·파일 I/O·네트워크 없이 독립 실행되며 명확한 원격 JNDI 조회는 `block`, 애매한 취약점·JNDI 참조는 `alert`, 정상 이벤트는 `record`로 분류합니다.
+- 기존 `src/decider.mjs` 규칙은 수정하지 않습니다. 차단 후보는 `xdr/known-cve/deny-rules.json`에 `simulation_only`로 별도 기록하고, 만료 시각과 근거 경보 번호를 포함합니다.
+- `block`과 `alert` 결과는 URL·출발 주소·계정 없이 `xdr/alerts.log`에 기록합니다.
+
+### xdr-03 다시 확인
+
+`npm run xdr:run -- known-cve`
+
+정상 결과는 `block=8 alert=8 record=8`이며 정상 이벤트 block은 0건입니다. 생성된 차단 후보는 6개이고 `mode`는 `simulation_only`입니다.

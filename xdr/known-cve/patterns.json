@@ -1,0 +1,38 @@
+{
+  "technique": "T1190",
+  "cve": "CVE-2021-44228",
+  "patterns": [
+    {
+      "name": "jndi_header_lookup",
+      "condition": {
+        "signal": "요청 머리글 또는 User-Agent에 완전한 ${jndi:<protocol>://...} 원격 조회 구문이 있음"
+      },
+      "evidence": "CVE-2021-44228 형태의 외부 공개 애플리케이션 악용 신호이며 MITRE ATT&CK T1190 근거입니다.",
+      "confidence": 0.98
+    },
+    {
+      "name": "jndi_argument_lookup",
+      "condition": {
+        "signal": "URL·쿼리·요청 인자에 완전한 ${jndi:<protocol>://...} 원격 조회 구문이 있음"
+      },
+      "evidence": "CVE-2021-44228 형태의 요청 인자 악용 신호이며 MITRE ATT&CK T1190 근거입니다.",
+      "confidence": 0.98
+    },
+    {
+      "name": "known_cve_probe",
+      "condition": {
+        "signal": "CVE-2021-44228 이름·취약점 점검·probe 흔적이 있으나 완전한 원격 조회 구문은 확인되지 않음"
+      },
+      "evidence": "알려진 취약점 점검 흔적은 MITRE ATT&CK T1190 관점에서 검토가 필요한 보조 신호입니다.",
+      "confidence": 0.65
+    },
+    {
+      "name": "jndi_reference",
+      "condition": {
+        "signal": "jndi·lookup·관련 라이브러리 또는 잘린 조회 형태가 있으나 완전한 원격 조회 구문은 확인되지 않음"
+      },
+      "evidence": "불완전한 원격 조회 관련 흔적은 MITRE ATT&CK T1190 관점에서 단독 차단보다 검토가 필요한 보조 신호입니다.",
+      "confidence": 0.6
+    }
+  ]
+}
