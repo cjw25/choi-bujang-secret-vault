@@ -101,7 +101,7 @@
 
 <script type="module">
 const SESSION_KEY = 'aleph_session_v5';
-const DEVICE_SESSION_KEY = 'aleph_device_session_v11';
+sessionStorage.removeItem('aleph_device_session_v11');
 const signedOut = document.querySelector('#signed-out');
 const signedIn = document.querySelector('#signed-in');
 const loginForm = document.querySelector('#login-form');
@@ -150,24 +150,11 @@ function saveSession(session) {
 }
 
 function loadDeviceSession() {
-  try {
-    const value = JSON.parse(sessionStorage.getItem(DEVICE_SESSION_KEY));
-    if (!value || typeof value.token !== 'string' || !value.token
-        || typeof value.expiresAt !== 'string' || Date.parse(value.expiresAt) <= Date.now()) {
-      sessionStorage.removeItem(DEVICE_SESSION_KEY);
-      return null;
-    }
-    return value;
-  } catch {
-    sessionStorage.removeItem(DEVICE_SESSION_KEY);
-    return null;
-  }
+  return null;
 }
 
 function saveDeviceSession(value) {
   currentDeviceSession = value;
-  if (value) sessionStorage.setItem(DEVICE_SESSION_KEY, JSON.stringify(value));
-  else sessionStorage.removeItem(DEVICE_SESSION_KEY);
 }
 
 function clearProtectedView(message = '기기 승인 확인 후 자료를 볼 수 있습니다.') {
