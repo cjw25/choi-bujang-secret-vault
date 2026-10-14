@@ -1,7 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import config from '../../aleph.config.json' with { type: 'json' };
-import { createLoginVerifier } from '../../src/verify-login.mjs';
+import { hasForbiddenAuthorityFields, verifyOwnedNote } from '../../src/api-resource-policy.mjs';
 import { noteResourceId } from '../../src/resource-id.mjs';
+import { createLoginVerifier } from '../../src/verify-login.mjs';
 
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
@@ -46,11 +47,11 @@ function readId(request) {
   const value = request.query?.id;
 
   if (typeof value === 'string') {
-    return value;
+    return value.toLowerCase();
   }
 
-  if (Array.isArray(value) && value.length === 1) {
-    return value[0];
+  if (Array.isArray(value) && value.length === 1 && typeof value[0] === 'string') {
+    return value[0].toLowerCase();
   }
 
   return null;
@@ -106,6 +107,15 @@ export default async function handler(request, response) {
     },
   });
 
+  const ownership = await verifyOwnedNote(supabase, login.userId, id);
+  if (!ownership.allowed) {
+    const status = ownership.reasonCode === 'policy_unavailable' ? 503 : 404;
+    return sendJson(response, status, {
+      error: status === 503 ? '권한 확인을 완료하지 못했습니다.' : '메모를 찾을 수 없습니다.',
+      reasonCode: ownership.reasonCode,
+    });
+  }
+
   if (request.method === 'GET') {
     const { data, error } = await supabase
       .from('notes')
@@ -123,6 +133,7 @@ export default async function handler(request, response) {
     if (!data) {
       return sendJson(response, 404, {
         error: '메모를 찾을 수 없습니다.',
+        reasonCode: 'resource_denied',
       });
     }
 
@@ -137,7 +148,20 @@ export default async function handler(request, response) {
   if (request.method === 'PUT') {
     const body = readBody(request);
 
-    if (!body || typeof body.title !== 'string' || typeof body.body !== 'string') {
+    if (!body) {
+      return sendJson(response, 400, {
+        error: 'title과 body가 필요합니다.',
+      });
+    }
+
+    if (hasForbiddenAuthorityFields(body)) {
+      return sendJson(response, 403, {
+        error: '권한은 서버에서 확인합니다.',
+        reasonCode: 'resource_denied',
+      });
+    }
+
+    if (typeof body.title !== 'string' || typeof body.body !== 'string') {
       return sendJson(response, 400, {
         error: 'title과 body가 필요합니다.',
       });
@@ -171,6 +195,7 @@ export default async function handler(request, response) {
     if (!data) {
       return sendJson(response, 404, {
         error: '메모를 찾을 수 없습니다.',
+        reasonCode: 'resource_denied',
       });
     }
 
@@ -199,6 +224,7 @@ export default async function handler(request, response) {
   if (!data) {
     return sendJson(response, 404, {
       error: '메모를 찾을 수 없습니다.',
+      reasonCode: 'resource_denied',
     });
   }
 
