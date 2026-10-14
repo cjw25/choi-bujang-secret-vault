@@ -12,7 +12,7 @@ export function deploymentIdentity(env, config) {
   if (env.VERCEL_GIT_PROVIDER !== 'github' || !OWNER.test(owner || '')
       || !REPO.test(repo || '') || repo === '.' || repo === '..'
       || repo.toLowerCase().endsWith('.git') || !SHA.test(commit || '')
-      || !HOST.test(host || '') || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].includes(config?.step)
+      || !HOST.test(host || '') || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(config?.step)
       || typeof config.judgeIssuer !== 'string'
       || !/^https:\/\/[a-z0-9-]+\.up\.railway\.app\/defense\/judge$/iu.test(config.judgeIssuer)
       || typeof config.sampleMarker !== 'string'
@@ -21,7 +21,7 @@ export function deploymentIdentity(env, config) {
   }
 
   const allowedRoutes = Array.isArray(config.allowedRoutes) ? [...config.allowedRoutes] : [];
-  if (allowedRoutes.some(route => typeof route !== 'string' || !ROUTE.test(route))) {
+  if (allowedRoutes.some((route) => typeof route !== 'string' || !ROUTE.test(route))) {
     throw new Error('aleph.config.json의 allowedRoutes 형식을 확인하세요.');
   }
   if (config.step >= 10 && (typeof config.restoreRoute !== 'string'
