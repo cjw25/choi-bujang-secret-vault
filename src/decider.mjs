@@ -6,7 +6,7 @@
 export const RULE_IDS = Object.freeze(['device_registered', 'step_up_required', 'resource_zone']);
 
 const EMPTY_QUERY_SHA256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
-const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}';
+const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
 const ITEM_PATH = new RegExp(`^/(api/)?(notes|announcements|materials)/(${UUID})$`, 'iu');
 const NOTE_COLLECTION_PATH = /^\/(?:api\/)?notes$/u;
 
