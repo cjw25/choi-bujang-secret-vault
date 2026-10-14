@@ -100,7 +100,6 @@
   </main>
 
 <script type="module">
-const SESSION_KEY = 'aleph_session_v5';
 const signedOut = document.querySelector('#signed-out');
 const signedIn = document.querySelector('#signed-in');
 const loginForm = document.querySelector('#login-form');
@@ -127,26 +126,6 @@ let currentSession = null;
 let deviceApproved = false;
 let editingId = null;
 let deferredInstallPrompt = null;
-
-function loadStoredSession() {
-  try {
-    const value = JSON.parse(sessionStorage.getItem(SESSION_KEY));
-    if (!value || typeof value.access_token !== 'string' || !value.access_token) return null;
-    if (Number.isInteger(value.expires_at) && value.expires_at <= Math.floor(Date.now() / 1000)) {
-      sessionStorage.removeItem(SESSION_KEY);
-      return null;
-    }
-    return value;
-  } catch {
-    sessionStorage.removeItem(SESSION_KEY);
-    return null;
-  }
-}
-
-function saveSession(session) {
-  if (session) sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  else sessionStorage.removeItem(SESSION_KEY);
-}
 
 function clearProtectedView(message = '기기 승인 확인 후 자료를 볼 수 있습니다.') {
   resetEditor();
@@ -420,7 +399,6 @@ loginForm.addEventListener('submit', async event => {
     });
     passwordInput.value = '';
     deviceApproved = false;
-    saveSession(session);
     showSession(session);
   } catch (error) {
     passwordInput.value = '';
@@ -429,7 +407,6 @@ loginForm.addEventListener('submit', async event => {
 });
 
 logoutButton.addEventListener('click', () => {
-  saveSession(null);
   deviceApproved = false;
   showSession(null);
 });
@@ -538,7 +515,7 @@ if ('serviceWorker' in navigator) {
 }
 
 refreshInstallState();
-showSession(loadStoredSession());
+showSession(null);
 </script>
 </body>
 </html>
