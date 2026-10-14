@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import config from '../aleph.config.json' with { type: 'json' };
-import { createLoginVerifier } from '../src/verify-login.mjs';
+import { hasForbiddenAuthorityFields } from '../src/api-resource-policy.mjs';
 import { noteResourceId } from '../src/resource-id.mjs';
+import { createLoginVerifier } from '../src/verify-login.mjs';
 
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
@@ -110,7 +111,20 @@ export default async function handler(request, response) {
 
   const body = readBody(request);
 
-  if (!body || typeof body.title !== 'string' || typeof body.body !== 'string') {
+  if (!body) {
+    return sendJson(response, 400, {
+      error: 'title과 body가 필요합니다.',
+    });
+  }
+
+  if (hasForbiddenAuthorityFields(body)) {
+    return sendJson(response, 403, {
+      error: '권한은 서버에서 확인합니다.',
+      reasonCode: 'resource_denied',
+    });
+  }
+
+  if (typeof body.title !== 'string' || typeof body.body !== 'string') {
     return sendJson(response, 400, {
       error: 'title과 body가 필요합니다.',
     });
