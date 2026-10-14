@@ -2,6 +2,7 @@ const WINDOW_MS = 10 * 60 * 1000;
 const BURST_LIMIT = 120;
 const DEVICE_ID = /^[a-f0-9]{16}$/u;
 
+// 9단계 신규 복합 사건과 기존 로컬 계약 사건을 모두 비밀값 없이 호환합니다.
 function normalizeEvent(event) {
   if (!event || typeof event !== 'object' || Array.isArray(event)) return null;
 

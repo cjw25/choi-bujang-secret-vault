@@ -27,6 +27,7 @@ function reads(count, {
   }));
 }
 
+// 원래 9단계 로컬 계약의 최소 사건 모양도 회귀 검사합니다.
 function legacyReads(count, { intervalSeconds = 2, owner = subject, start = START } = {}) {
   return Array.from({ length: count }, (_, index) => ({
     at: new Date(start + index * intervalSeconds * 1000).toISOString(),
