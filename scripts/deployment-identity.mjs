@@ -2,8 +2,8 @@ const OWNER = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/u;
 const REPO = /^[A-Za-z0-9._-]{1,100}$/u;
 const SHA = /^[a-f0-9]{40}$/iu;
 const HOST = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.vercel\.app$/iu;
-const ROUTE = /^(GET|POST|PUT|PATCH|DELETE) \/[A-Za-z0-9._~:/-]{1,200}$/u;
 
+// 배포 식별은 1~9단계 저장점 번호만 허용합니다.
 export function deploymentIdentity(env, config) {
   const owner = env.VERCEL_GIT_REPO_OWNER;
   const repo = env.VERCEL_GIT_REPO_SLUG;
@@ -12,24 +12,14 @@ export function deploymentIdentity(env, config) {
   if (env.VERCEL_GIT_PROVIDER !== 'github' || !OWNER.test(owner || '')
       || !REPO.test(repo || '') || repo === '.' || repo === '..'
       || repo.toLowerCase().endsWith('.git') || !SHA.test(commit || '')
-      || !HOST.test(host || '') || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(config?.step)
+      || !HOST.test(host || '') || ![1, 2, 3, 4, 5, 6, 7, 8, 9].includes(config?.step)
       || typeof config.judgeIssuer !== 'string'
       || !/^https:\/\/[a-z0-9-]+\.up\.railway\.app\/defense\/judge$/iu.test(config.judgeIssuer)
       || typeof config.sampleMarker !== 'string'
       || !/^[A-Z0-9_]{1,80}$/u.test(config.sampleMarker)) {
-    throw new Error('배포 식별 정보를 확인할 수 없습니다. Vercel 시스템 환경변수와 단계 설정을 확인하세요.');
+    throw new Error('배포 식별 정보를 확인할 수 없습니다. Vercel 시스템 환경변수와 1단계 시작 틀을 확인하세요.');
   }
-
-  const allowedRoutes = Array.isArray(config.allowedRoutes) ? [...config.allowedRoutes] : [];
-  if (allowedRoutes.some((route) => typeof route !== 'string' || !ROUTE.test(route))) {
-    throw new Error('aleph.config.json의 allowedRoutes 형식을 확인하세요.');
-  }
-  if (config.step >= 10 && (typeof config.restoreRoute !== 'string'
-      || !ROUTE.test(config.restoreRoute) || !allowedRoutes.includes(config.restoreRoute))) {
-    throw new Error('10단계부터 restoreRoute는 allowedRoutes에도 있는 "METHOD /경로" 형식이어야 합니다.');
-  }
-
-  const identity = {
+  return {
     schema: 'aleph.defense.deployment.v1',
     step: config.step,
     repoUrl: `https://github.com/${owner.toLowerCase()}/${repo.toLowerCase()}`,
@@ -37,9 +27,7 @@ export function deploymentIdentity(env, config) {
     publicAppUrl: `https://${host.toLowerCase()}`,
     judgeIssuer: config.judgeIssuer,
     sampleMarker: config.sampleMarker,
-    allowedRoutes,
+    allowedRoutes: Array.isArray(config.allowedRoutes) ? [...config.allowedRoutes] : [],
     originalApiUrl: config.originalApiUrl ?? null,
   };
-  if (config.step >= 10) identity.restoreRoute = config.restoreRoute;
-  return identity;
 }
