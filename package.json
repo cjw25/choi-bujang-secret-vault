@@ -12,6 +12,7 @@
     "fixture:8": "node scripts/fixture-8.mjs",
     "fixture:8-api": "node scripts/fixture-8-api.mjs",
     "fixture:10": "node scripts/fixture-10.mjs",
+    "fixture:11": "node scripts/fixture-11.mjs",
     "restore:snapshot": "node scripts/restore-snapshot.mjs",
     "restore:preview": "node scripts/restore-preview.mjs",
     "restore:apply": "node scripts/restore-apply.mjs",
