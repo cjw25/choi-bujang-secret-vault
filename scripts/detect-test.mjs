@@ -27,8 +27,19 @@ function reads(count, {
   }));
 }
 
+function legacyReads(count, { intervalSeconds = 2, owner = subject, start = START } = {}) {
+  return Array.from({ length: count }, (_, index) => ({
+    at: new Date(start + index * intervalSeconds * 1000).toISOString(),
+    method: 'GET',
+    identity: { sub: owner },
+  }));
+}
+
 const proposal = {
   action: 'propose_revocation', reasonCode: 'burst_read', subject, deviceId,
+};
+const legacyProposal = {
+  action: 'propose_revocation', reasonCode: 'burst_read', subject,
 };
 
 // 9단계 정상 사건 보존과 복합 의심 사건만의 회수 제안을 함께 회귀 검사합니다.
@@ -37,6 +48,7 @@ const cases = [
   { name: '평소 네트워크의 121건', events: reads(121), expected: { action: 'observe' } },
   { name: '다른 네트워크지만 120건', events: reads(120, { network: 'unusual' }), expected: { action: 'observe' } },
   { name: '다른 네트워크의 121건', events: reads(121, { network: 'unusual' }), expected: proposal },
+  { name: '기존 9단계 계약의 GET 121건', events: legacyReads(121), expected: legacyProposal },
   { name: '지역만 다른 대량 조회', events: reads(121, { extra: { region: 'far-away' } }), expected: { action: 'observe' } },
   { name: '거부된 대량 조회', events: reads(121, { network: 'unusual', decision: 'deny' }), expected: { action: 'observe' } },
   { name: '두 기기에 나뉜 조회', events: [
