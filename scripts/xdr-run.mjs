@@ -51,7 +51,7 @@ export async function runXdr({ root, moduleKey, writeError = (line) => console.e
     counts[action] += 1;
   }
 
-  if (moduleKey === 'brute-force' || moduleKey === 'web-injection' || moduleKey === 'known-cve' || moduleKey === 'persistence' || moduleKey === 'privilege') {
+  if (moduleKey === 'brute-force' || moduleKey === 'web-injection' || moduleKey === 'known-cve' || moduleKey === 'persistence' || moduleKey === 'privilege' || moduleKey === 'exfiltration') {
     const responder = await import(pathToFileURL(join(root, 'xdr', moduleKey, 'respond.mjs')).href);
     if (typeof responder.writeResponseArtifacts === 'function') {
       await responder.writeResponseArtifacts({ root, alerts: fixture.alerts, decisions });

@@ -67,3 +67,17 @@ block=8 alert=8 record=8
 - `respond.mjs`는 검증된 강한 `block` 판정만 `simulation_only` ZTNA 후보로 만들고 기존 ZTNA 규칙은 바꾸지 않습니다.
 - 다시 실행: `npm run xdr:run -- privilege`
 - 정상 결과: `block=9 alert=8 record=9`, 정상 이벤트 block 0건, 차단 후보 8개.
+
+
+## exfiltration (xdr-06)
+
+- 입력: `xdr/fixtures/exfiltration.json` 가상 Wazuh 경보 30건
+- 근거: MITRE ATT&CK T1041, T1048
+- `read-alerts.mjs`는 확인용 5필드 추출 모듈이며 `decide.mjs`와 분리되어 있습니다.
+- `patterns.json`의 패턴 근거는 한 줄씩 기록합니다.
+- `decide.mjs`는 import 없이 독립 실행되며 명확한 공격은 `block`, 애매한 시도는 `alert`, 정상 이벤트는 `record`로 반환합니다.
+- `respond.mjs`는 검증된 `block`만 만료 시각·근거 경보 번호가 있는 ZTNA 추가 거부 규칙으로 만들고 기존 판정 규칙은 바꾸지 않습니다.
+- `block`·`alert` 로그에는 출발 주소·계정·설명을 기록하지 않습니다.
+- 다시 실행: `npm run xdr:run -- exfiltration`
+- 로컬 확인 결과: `block=10 alert=10 record=10`, 정상 이벤트 block 0건, 차단 규칙 10개.
+- 연결 확인: `ex-01 block -> deny`, `ex-11 alert -> allow`, `ex-21 record -> allow`.

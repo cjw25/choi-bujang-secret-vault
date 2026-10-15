@@ -586,3 +586,19 @@ Production 확인:
 `npm run xdr:run -- privilege`
 
 정상 결과는 `block=9 alert=8 record=9`이며 정상 이벤트 `block`은 0건, 생성된 차단 후보는 8개이고 `mode`는 `simulation_only`입니다.
+
+
+## 보너스 xdr-06 저장점 — 자료 빼돌리기를 잡아 냅니다
+
+- 입력: `xdr/fixtures/exfiltration.json` 가상 Wazuh 경보 30건
+- 근거: MITRE ATT&CK T1041(명령 통로로 유출), T1048(다른 프로토콜로 유출)
+- `read-alerts.mjs`는 확인용으로 시각·출발 주소·계정·규칙 수준·설명 5개 필드만 추출하고 비밀값처럼 보이는 설명·계정은 가립니다. `decide.mjs`에서는 이 모듈을 불러오지 않습니다.
+- `decide.mjs`는 다른 파일·패키지·파일 I/O·네트워크 없이 독립적으로 `block`/`alert`/`record`를 계산합니다.
+- `respond.mjs`는 검증된 `block` 판정만 만료 시각과 근거 경보 번호를 가진 ZTNA 추가 거부 후보로 만들며 기존 `src/decider.mjs` 규칙은 수정하지 않습니다.
+- `block`·`alert` 결과는 출발 주소·계정·설명 같은 민감 필드 없이 `xdr/alerts.log`에 한 줄 JSON으로 남깁니다.
+- 로컬 확인 결과: `block=10 alert=10 record=10`, 정상 이벤트 block 0건, 차단 규칙 10개.
+- 연결 확인: 명확한 공격 `ex-01`은 `deny`, 애매한 `ex-11`과 정상 `ex-21`은 기존 `allow`를 유지했습니다.
+
+다시 실행: `npm run xdr:run -- exfiltration`
+
+위 결과는 로컬 가상 경보 시험이며 운영 심판 판정을 뜻하지 않습니다.

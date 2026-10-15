@@ -1,0 +1,22 @@
+[
+  {
+    "name": "large_unfamiliar_destination",
+    "condition": "관련 기법·수준 10 이상·확인된 전송 50MB 이상에 낯선 목적지와 100MB 이상 또는 반복/다량 파일 결합",
+    "evidence": "MITRE T1041/T1048 외부 유출. https://attack.mitre.org/techniques/T1041/ https://attack.mitre.org/techniques/T1048/; 수치 임계값은 학생 정책."
+  },
+  {
+    "name": "bulk_or_repeated_transfer",
+    "condition": "관련 기법·수준 10 이상·50MB 이상에 파일 50건 이상 또는 전송 5회 이상 결합",
+    "evidence": "T1041/T1048 반복 또는 다량 자료 유출 신호. 업무 시간·평소 목록을 임의 추정하지 않는다."
+  },
+  {
+    "name": "exfiltration_review",
+    "condition": "관련 기법·수준 5 이상이지만 차단 복합 근거 부족",
+    "evidence": "T1041/T1048 단편적 외부 전송 또는 파일 압축 경보는 악용 확정 근거가 부족해 알림만."
+  },
+  {
+    "name": "no_exfiltration_signal",
+    "condition": "위 패턴에 해당하지 않는 정상 전송",
+    "evidence": "정상 동기화·조회·저장을 주소나 기법 표시만으로 차단하지 않는다."
+  }
+]
