@@ -56,3 +56,14 @@ block=8 alert=8 record=8
 - `respond.mjs`는 검증된 `block` 판정만 별도 `simulation_only` ZTNA 차단 후보로 만들고 기존 ZTNA 규칙은 고치지 않습니다.
 - 다시 실행: `npm run xdr:run -- persistence`
 - 정상 결과: `block=8 alert=8 record=8`, 정상 이벤트 block 0건, 차단 후보 7개.
+
+
+## privilege (xdr-05)
+
+- 입력: `xdr/fixtures/privilege.json` 가상 경보 26건
+- 근거: MITRE T1068, T1078; 보조 근거 T1098.007, T1548
+- `read-alerts.mjs`는 확인용 5개 필드만 추출하며 `decide.mjs`에서 불러오지 않습니다.
+- `decide.mjs`는 다른 파일·패키지·파일 I/O·네트워크 없이 `block`/`alert`/`record`를 동기 계산합니다.
+- `respond.mjs`는 검증된 강한 `block` 판정만 `simulation_only` ZTNA 후보로 만들고 기존 ZTNA 규칙은 바꾸지 않습니다.
+- 다시 실행: `npm run xdr:run -- privilege`
+- 정상 결과: `block=9 alert=8 record=9`, 정상 이벤트 block 0건, 차단 후보 8개.

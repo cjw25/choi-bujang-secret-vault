@@ -569,3 +569,20 @@ Production 확인:
 `npm run xdr:run -- persistence`
 
 정상 결과는 `block=8 alert=8 record=8`이며 정상 이벤트 block은 0건입니다. 생성된 차단 후보는 7개이고 `mode`는 `simulation_only`입니다.
+
+
+## 보너스 xdr-05 저장점 — 권한 가로채기를 잡아 냅니다
+
+- 입력: `xdr/fixtures/privilege.json` 가상 Wazuh 경보 26건
+- 근거: MITRE ATT&CK T1068, T1078 및 보조 T1098.007, T1548
+- `xdr/privilege/read-alerts.mjs`는 시각·출발 주소·계정·규칙 수준·설명 5개 필드만 추출하고 비밀값처럼 보이는 설명은 숨깁니다.
+- `xdr/privilege/decide.mjs`는 외부 의존성 없이 동기 판정하며 명확한 복합 권한 탈취는 `block`, 불충분한 권한 신호는 `alert`, 정상 활동은 `record`로 분류합니다.
+- 기존 `src/decider.mjs` 규칙은 수정하지 않았고, `xdr/privilege/respond.mjs`가 `block` 후보만 별도 `simulation_only` ZTNA 거부 후보로 기록합니다.
+- 차단 후보에는 만료 시각과 근거 경보 ID가 포함되며 검증된 사용자·세션·이벤트 상관관계가 없으면 추가 거부를 적용하지 않습니다.
+- `block`·`alert` 결과만 `xdr/alerts.log`에 민감 필드 없이 기록합니다.
+
+### xdr-05 다시 확인
+
+`npm run xdr:run -- privilege`
+
+정상 결과는 `block=9 alert=8 record=9`이며 정상 이벤트 `block`은 0건, 생성된 차단 후보는 8개이고 `mode`는 `simulation_only`입니다.
