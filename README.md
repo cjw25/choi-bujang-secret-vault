@@ -553,3 +553,19 @@ Production 확인:
 `npm run xdr:run -- known-cve`
 
 정상 결과는 `block=8 alert=8 record=8`이며 정상 이벤트 block은 0건입니다. 생성된 차단 후보는 6개이고 `mode`는 `simulation_only`입니다.
+
+
+## 보너스 xdr-04 저장점 — 몰래 심어진 프로그램을 찾아냅니다
+
+- 입력: `xdr/fixtures/persistence.json` 가상 Wazuh 경보 24건
+- 근거: MITRE ATT&CK T1543(시스템 프로세스 생성·변경), T1053(예약 작업), 시작 폴더 신호는 T1547.001
+- `xdr/persistence/read-alerts.mjs`는 시각·출발 주소·계정·규칙 수준·설명 다섯 필드만 추출하며 비밀값처럼 보이는 설명은 가립니다.
+- `xdr/persistence/decide.mjs`는 import·파일 I/O·네트워크 없이 독립 실행되며 명확한 지속성 공격은 `block`, 애매한 변경은 `alert`, 정상 이벤트는 `record`로 분류합니다.
+- 기존 `src/decider.mjs` 규칙은 수정하지 않습니다. 차단 후보는 `xdr/persistence/deny-rules.json`에 `simulation_only`로 별도 기록하고, 만료 시각과 근거 경보 번호를 포함합니다.
+- `block`과 `alert` 결과는 출발 주소·계정·설명 없이 `xdr/alerts.log`에 기록합니다.
+
+### xdr-04 다시 확인
+
+`npm run xdr:run -- persistence`
+
+정상 결과는 `block=8 alert=8 record=8`이며 정상 이벤트 block은 0건입니다. 생성된 차단 후보는 7개이고 `mode`는 `simulation_only`입니다.

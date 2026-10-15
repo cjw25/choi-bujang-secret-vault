@@ -45,3 +45,14 @@ block=8 alert=8 record=8
 ```
 
 정상 이벤트 block은 0건입니다. 차단 후보 6개는 `known-cve/deny-rules.json`에 `simulation_only`로 기록되며 만료 시각과 근거 경보 번호를 포함합니다. `block`·`alert` 로그에는 URL·출발 주소·계정을 기록하지 않습니다.
+
+
+## persistence (xdr-04)
+
+- 입력: `xdr/fixtures/persistence.json` 가상 경보 24건
+- 근거: MITRE T1543, T1053, 시작 폴더 신호 T1547.001
+- `read-alerts.mjs`는 확인용 5필드 추출 모듈이며 `decide.mjs`에서 불러오지 않습니다.
+- `decide.mjs`는 외부 의존 없이 `block`/`alert`/`record`를 계산합니다.
+- `respond.mjs`는 검증된 `block` 판정만 별도 `simulation_only` ZTNA 차단 후보로 만들고 기존 ZTNA 규칙은 고치지 않습니다.
+- 다시 실행: `npm run xdr:run -- persistence`
+- 정상 결과: `block=8 alert=8 record=8`, 정상 이벤트 block 0건, 차단 후보 7개.
