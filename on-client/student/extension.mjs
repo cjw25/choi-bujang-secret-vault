@@ -880,6 +880,117 @@ export function createStudentView() {
 
       return root;
     },
-    renderAction() { return '학생 구현 대기: 현재 사건·조치·실제 대상·사람 확인·ACK와 원천 효과·unknown을 구분하세요.'; },
+    renderAction({ status, event, actionId, target, receipt, observation, message, confirmationExpiresAt, error }) {
+      // 표시 전용: 실제 집행·인증 티켓·재조회는 제공 화면에서 처리합니다.
+      const root = document.createElement('div');
+      const secretPattern = /Bearer\s+\S+|sk-(?:proj-|ant-|svcacct-)?[A-Za-z0-9_-]{8,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|(?:api[_ -]?key|authorization|password|secret|token|비밀번호|토큰)\s*[:=]\s*\S+/i;
+      const safeText = (value) => {
+        if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+        if (typeof value !== 'string' || !value.trim() ||
+            value.length > 400 || secretPattern.test(value)) return null;
+        return value;
+      };
+      const show = (value) => safeText(value) ?? '확인 불가';
+      const line = (value) => {
+        const p = document.createElement('p');
+        p.textContent = value;
+        root.appendChild(p);
+      };
+
+      // 현재 사건/조치와 다른 요청의 영수증을 성공 결과처럼 결합하지 않습니다.
+      if ((receipt?.eventId != null && receipt.eventId !== event?.id) ||
+          (receipt?.actionId != null && receipt.actionId !== actionId)) {
+        line('현재 사건·조치와 요청 기록이 일치하지 않습니다. 결과 불명(unknown)입니다.');
+        line('제공 화면에서 연동 시스템 결과만 재조회하세요. 성공으로 판단하지 마세요.');
+        return root;
+      }
+
+      const effectConfirmed = status === 'succeeded' &&
+        observation?.effectApplied === true;
+      const currentStatus = status === 'succeeded' && !effectConfirmed
+        ? 'unknown' : status;
+
+      switch (currentStatus) {
+        case 'idle':
+          line('조치 미실행(idle): 아직 실행을 요청하지 않았습니다.');
+          if (safeText(message)) line('안내: ' + safeText(message));
+          break;
+        case 'loading':
+          line('조치 준비 또는 연동 시스템 결과 조회 중(loading)입니다. 처리 완료가 아닙니다.');
+          break;
+        case 'prepared':
+          line('조치 준비됨·미실행(prepared): 대상과 조치를 사람이 확인해야 실행할 수 있습니다.');
+          line('현재 단계는 준비만 되었으며 서버 집행은 시작되지 않았습니다.');
+          break;
+        case 'executing':
+          line('사람 확인 후 연동 시스템에 요청 전송 중(executing)입니다. 처리 결과는 아직 없습니다.');
+          break;
+        case 'pending':
+          line('연동 시스템 요청 접수·처리 중(pending)입니다.');
+          line('접수 응답(ACK)은 조치 실행이나 실제 효과를 확인한 결과가 아닙니다.');
+          break;
+        case 'succeeded':
+          line('연동 시스템 효과 확인(succeeded): 실제 효과가 관측되었습니다.');
+          line('effectApplied: true');
+          if (observation?.observedAt != null) {
+            line('효과 관측 시각: ' + show(observation.observedAt));
+          }
+          if (receipt?.receiptId != null) {
+            line('효과 확인 영수증 ID: ' + show(receipt.receiptId));
+          }
+          break;
+        case 'denied':
+          line('연동 시스템 조치 요청 거절(denied): 집행 성공이 아닙니다.');
+          if (safeText(message)) line('사유: ' + safeText(message));
+          break;
+        case 'failed':
+          line('연동 시스템 조치 처리 실패(failed): 집행 성공이 아닙니다.');
+          if (safeText(message)) line('사유: ' + safeText(message));
+          break;
+        case 'unknown':
+          line('연동 시스템 처리 결과 불명(unknown)입니다.');
+          line('성공 또는 효과 없음으로 단정하지 말고 제공 화면에서 연동 시스템 결과만 재조회하세요.');
+          if (status === 'succeeded') {
+            line('효과 확인 자료(effectApplied: true)가 없어 succeeded 상태를 인정할 수 없습니다.');
+          }
+          break;
+        case 'expired':
+          line('사람 확인 기한 만료(expired): 기존 준비로 실행할 수 없습니다. 조치를 다시 준비하세요.');
+          break;
+        case 'error':
+          line('조치 요청 처리 실패(error): 요청이 처리되지 않았습니다.');
+          line('오류 코드: ' + (/^[A-Z][A-Z0-9_]{1,63}$/.test(error?.code)
+            ? error.code : 'ACTION_RESULT_UNVERIFIED'));
+          line('오류 내용: ' + (safeText(error?.message) ??
+            '오류 내용을 안전하게 표시할 수 없습니다.'));
+          break;
+        default:
+          line('조치 상태 확인 불가: 알 수 없는 상태입니다. 성공으로 판단하지 마세요.');
+      }
+
+      // 식별자는 전달받은 현재 자료만 표시하고, 없는 값은 만들어내지 않습니다.
+      if (safeText(event?.id)) {
+        root.setAttribute('data-student-action-event', event.id);
+        line('사건 ID: ' + show(event.id));
+      }
+      if (Array.isArray(event?.evidence)) {
+        for (const row of event.evidence) {
+          if (safeText(row?.id)) line('근거 ID: ' + show(row.id));
+        }
+      }
+      if (safeText(actionId)) line('조치 ID: ' + show(actionId));
+      if (safeText(target?.id)) line('대상 ID: ' + show(target.id));
+      if (target?.generation != null) line('대상 세대(generation): ' + show(target.generation));
+      if (safeText(receipt?.requestId)) {
+        root.setAttribute('data-student-action-request', receipt.requestId);
+        line('요청 ID: ' + show(receipt.requestId));
+      }
+      if (safeText(receipt?.receiptId)) line('접수 영수증 ID: ' + show(receipt.receiptId));
+      if (receipt?.version != null) line('결과 버전(version): ' + show(receipt.version));
+      if (confirmationExpiresAt != null) {
+        line('사람 확인 기한: ' + show(confirmationExpiresAt));
+      }
+      return root;
+    },
   };
 }
