@@ -727,7 +727,7 @@ export function createStudentView() {
         line('예제 자료(demo) · 실제 AI 사건 설명 아님');
       }
 
-      if (!event && explanation?.status !== 'error') {
+      if (!event) {
         line('보안 기록에서 기록을 먼저 고르세요.');
         return root;
       }
