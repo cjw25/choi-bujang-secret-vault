@@ -20,9 +20,9 @@ ARGUS-X는 본인 범위의 현재 로그인·기기·세션, 업무 앱 접근 
 | 대상 | 현재 원문에서 직접 확인한 값 | 실측 상태 |
 | --- | --- | --- |
 | 앱 패키지 | `on-client/package.json`: `alekov-client-starter` **0.2.11** | GitHub 원문 확인 |
-| Node.js | 앱 `engines.node`는 **24.19.0**. 제공 PowerShell 실행 스크립트는 **22~24**를 검사·허용하고 24.19.0을 권장 | **사용자 PC의 정확한 버전 미확인**. 아래 `node --version`으로 확인 |
+| Node.js | 앱 `engines.node`는 **24.19.0**. 제공 PowerShell 실행 스크립트는 **22~24**를 검사·허용하고 24.19.0을 권장 | **사용자 PC PowerShell 직접 실행: `node --version` → `v24.19.0` 확인** |
 | 운영체제 | 제공 `tools/start-alekov.ps1`는 Windows PowerShell 실행 도구 | 사용자 Windows PowerShell에서 이전 실행 확인. macOS/Linux 미시험 |
-| Git | 저장소에 기존 Git 기록 존재, `git status`와 `git pull --ff-only origin main` 실행 기록 확인 | Git 실행 가능, 세부 버전 미확인 |
+| Git | 저장소에 기존 Git 기록 존재 | 21단계에서 `git status` → 작업 트리 clean, `git pull --ff-only origin main` → `b07b3be..1661716` Fast-forward 및 신규 문서 1개 반영 확인. Git 세부 버전 미확인 |
 | npm | `npm start`, `npm run demo`, `npm run check`가 `on-client/package.json`에 정의됨 | npm 버전과 이 명령들의 21단계 새 실행 결과는 미확인 |
 | 앱 외부 의존성 | `on-client/package.json`에 외부 `dependencies`가 없음 | `on-client`에 `npm install`을 요구하는 근거 없음. 21단계에서 임의 설치 안 함 |
 | 최상위 프로젝트 | 최상위 별도 `package.json`(Node.js `>=22`)와 `package-lock.json`(`lockfileVersion: 3`) 존재 | 앱 실행 패키지와 혼동하지 않음 |
@@ -61,7 +61,7 @@ C:\github\aleph-defense-starter\
 
 ## 4. Windows PowerShell 실행·종료·재실행
 
-이 절차는 제공된 `on-client/README.md`, `docs/STUDENT_LAUNCH_GUIDE.md`, 실제 실행 스크립트와 **이 사용자의 과거 실행 기록**을 대조해 작성했다. **새 PowerShell 창에서 문서를 처음부터 그대로 재현하는 21단계 검사는 아직 미실시**이다.
+이 절차는 제공된 `on-client/README.md`, `docs/STUDENT_LAUNCH_GUIDE.md`, 실제 실행 스크립트와 **사용자가 21단계에서 직접 전달한 PowerShell 실행 결과 및 실제 브라우저 캡처**를 대조했다. 작업 폴더 `C:\github\aleph-defense-starter\on-client` 및 `node --version` → `v24.19.0`, 실행 도구의 정상 시작 메시지, 로컬 브라우저 주요 화면, 로컬 서버 무응답 확인 후 동일 명령 재실행 성공을 확인했다. **PowerShell 창을 새로 열었는지와 `Ctrl+C`를 눌러 종료했는지는 직접 입증되지 않았으므로 해당 부분은 미확인**이다.
 
 ### 시작
 
@@ -76,7 +76,7 @@ node --version
 Get-Content .\package.json
 ~~~
 
-`Get-Location`은 `on-client`을 가리켜야 한다. **이 문서가 사용자 PC의 Node.js 버전을 확인한 것은 아니므로 `node --version` 출력을 직접 기록한다.**
+`Get-Location`은 `on-client`을 가리켜야 한다. 사용자가 21단계에 직접 제출한 `node --version` 출력은 **`v24.19.0`**이다. 다른 PC의 설치 버전은 별도 확인이 필요하다.
 
 4. 같은 `on-client` PowerShell 창에서, 이전 사용자 실행 기록과 실제 도구 파일에 있는 다음 명령을 입력한다.
 
@@ -96,11 +96,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\start-alekov.ps1
 
 6. 로컬 브라우저에서 **http://127.0.0.1:5189/** 을 연다. 제공 메뉴의 정확한 명칭 **「보호 현황」**, **「업무 앱」**, **「보안 기록」**을 확인한다. 학생 구현을 새로 가져온 경우 `Ctrl+F5`로 최신 화면을 확인한다.
 7. **「보호 현황」**의 **「설치 패키지 조회」**를 직접 누른 뒤 제공 **「설치 패키지와 취약점 정보」**와 학생 **「학생 패키지 조회 표시」**의 상태를 비교한다. 이 사용자의 실제 화면에서는 `PROJECT_NOT_CONFIGURED`/`not_configured`가 표시되었다. 이것은 조회 대상 미설정이지 '취약점 없음'이 아니다.
+8. **21단계 재실행 후 실제 화면**: **「보호 현황」**에서 제공 로그인 오류와 학생 `renderIdentity()`의 `연결 없음` 표시 확인; **「업무 앱」**에서 제공 **「접속 요청」**, **「판정 결과」**와 학생 `renderDecision()`의 `업무 앱을 선택하고 접속을 요청하세요.` 확인; **「보안 기록」**에서 제공 **「접속·XDR 기록」**과 학생 `renderEvents()`의 `서버 연결 없음(disconnected)` 확인. 학생 `renderExplanation()`은 기록 선택 전 상태, 학생 `renderAction()`은 **`조치 미실행(idle): 아직 실행을 요청하지 않았습니다.`**로 표시됐고 실제 집행 버튼은 비활성화되어 있었다. 실제 접근 판정·사건 설명·집행은 수행하지 않았다.
 
 ### 종료·재실행 및 대체 방법
 
-- **종료**: 실행했던 PowerShell 창에서 `Ctrl+C`. 동일 브라우저 주소가 더 이상 응답하지 않는지 직접 확인한다. 이번 새 창 종료 실측은 **미확인**.
-- **재실행**: 위 `Set-Location`과 실행 명령을 같은 앱 폴더에서 반복한다. 파일을 지우거나 Git을 초기화하지 않는다.
+- **종료**: 실행했던 PowerShell 창에서 `Ctrl+C`를 누르는 절차가 제공 문서에 있다. 21단계에서는 명령 프롬프트로 돌아온 뒤 `Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:5189/" -TimeoutSec 3`의 연결 실패가 **실제로 확인**됐다. 다만 그 직전에 `Ctrl+C`를 눌렀다는 사실이나 실제 프로세스 종료 사유는 확인되지 않았다.
+- **재실행**: 위 `Set-Location`과 실행 명령을 같은 앱 폴더에서 반복한다. 21단계에서 무응답 확인 후 사용자가 실행 명령을 다시 실행해 제공 서버 로그 및 HTTP 응답 확인 안내가 재출력됐으며, **업무 앱·보안 기록 브라우저 화면까지 다시 확인**했다. 파일을 지우거나 Git을 초기화하지 않는다.
 - **포트 충돌**: 기존 포트 프로세스를 함부로 종료하지 않는다. 실행 도구의 코드상 대체 옵션은 `-Port 5190`이고 그때 주소는 `http://127.0.0.1:5190/`이다. **대체 포트 실행은 미시험**.
 - `npm start`는 `node src/server.mjs`를 실행하는 코드상 대체 경로이다. `npm run demo`는 예제 엔진이며 실제 기업 원천 연결이 아니다. `npm run check`는 `student/extension.mjs` 문법만 확인한다. **21단계 재실행으로 검증한 명령은 아니다.**
 - 기본 학생 앱은 Node.js 기본 모듈로 실행된다. `on-client`에서 임의로 `npm install`하거나 전체 프로젝트 `package-lock.json`을 변경하지 않는다.
@@ -190,15 +191,17 @@ flowchart LR
 
 | 구분 | 현재 결과 |
 | --- | --- |
-| 이전 단계 로컬 실행 | Windows PowerShell에서 시작했던 기록과 `127.0.0.1:5189/` 실제 브라우저 캡처 존재 |
-| 실제 화면 | 조치 `idle`, 패키지 `idle`와 `PROJECT_NOT_CONFIGURED`/`not_configured` 표시 확인 |
+| 21단계 Node.js 실측 | `C:\github\aleph-defense-starter\on-client` PowerShell의 `node --version` → **`v24.19.0`** 확인 |
+| 21단계 Git 상태·동기화 | `git status` clean 확인, `git pull --ff-only origin main` Fast-forward로 학생 문서 추가 확인 |
+| 21단계 실행·재실행 | `tools/start-alekov.ps1` 실행 시 `케셰브 연결 확인: http://127.0.0.1:5189`와 안내 메시지 확인. PowerShell 프롬프트 복귀 후 로컬 HTTP 무응답 확인, 같은 명령 재실행 후 화면 확인. `Ctrl+C` 실제 입력 여부는 미확인 |
+| 실제 브라우저 화면 | **보호 현황**, **업무 앱**, **보안 기록** 3개 메뉴 및 학생 `renderIdentity`·`renderDecision`·`renderEvents`·`renderExplanation`(선택 전)·`renderAction`(`idle`) 확인. 앞 단계 패키지 `idle` 및 `PROJECT_NOT_CONFIGURED`/`not_configured` 화면도 확인 |
 | 모의 데이터 | 조치 상태별 분리·신규 데이터 교체, 패키지 `not_checked`·`partial`·취약점 ID 보존 및 정확 버전 표시 검사 |
 | 소스에서만 확인 | 로컬 서버 실행 스크립트·기본 미연결 엔진·취소 세대 검사·외부 권한 조건 |
-| 미확인 | 새 PowerShell 창에서의 21단계 **전체 재현**, 실제 Node 버전 출력, 종료/재시작 확인, 다른 PC, 실 SDP/XDR 연결, 실 AI 추론, 실제 보안 조치, 승인된 패키지 OSV 조회 성공, 실제 lock 버전 대조, ALEPH 21단계 공식 판정 |
+| 미확인 | 실제로 **새 PowerShell 창을 열었는지** 및 **`Ctrl+C`로 종료했는지**의 직접 확인, 다른 PC 재현, 실 SDP/XDR 원천 연결, 실제 앱 접근 판정·XDR 사건, 실 AI 추론, 실제 보안 조치, 승인된 패키지 OSV 조회 성공, 실제 lock 버전 대조, ALEPH 21단계 공식 판정 |
 
-**21단계 첫 번째 직접 확인**: 다른 기존 작업을 보존한 상태로 **새 PowerShell 창**에서 4절의 위치·Node 버전·실행 명령을 그대로 수행하고 터미널의 정확한 출력과 브라우저 표시를 확인한다. 이미 5189가 사용 중인 경우 기존 서버를 강제 종료하지 않는다.
+**21단계 첫 번째 직접 확인 결과**: 사용자가 전달한 PowerShell에서 위치·Node 버전·실행 명령·정상 시작 출력과 로컬 브라우저를 확인했다. 새 창을 직접 열었다는 증거 및 `Ctrl+C` 종료 입력은 **미확인**이므로 다른 사람의 재현 시험 때 별도 기록한다. 이미 5189가 사용 중이면 기존 서버를 강제 종료하지 않는다.
 
-**두 번째 직접 확인**: 제공 버튼 **「보호 현황」**, **「업무 앱」**, **「보안 기록」**, **「설치 패키지 조회」**, **「패키지 조회 취소」**와 실제 파일·경로를 문서와 비교한다. 수행하지 않은 시험은 미확인으로 유지한다.
+**두 번째 직접 확인 결과**: 실제 브라우저에서 **「보호 현황」**, **「업무 앱」**, **「보안 기록」** 메뉴 및 학생 표시를 확인했다. 앞 단계 패키지 **「설치 패키지 조회」** 동작과 **「패키지 조회 취소」** 버튼의 존재도 확인했지만 취소 동작 자체는 **미실시**이다. 설명서에 없는 실제 원천 연결 성공을 주장하지 않는다.
 
 ## 9. 커밋과 21단계 원문 제출의 경계
 
