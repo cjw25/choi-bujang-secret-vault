@@ -94,6 +94,38 @@
           </section>
         </section>
 
+        <section class="card pc-security-card security-control-board" aria-labelledby="pc-security-title">
+          <h2 id="pc-security-title">3일차 네트워크·보안 관제 <span class="tag tag-student">ARGUS-X 추가 기능 · 일반 사용자 권한 · 읽기 전용</span></h2>
+          <p class="muted">기존 Windows 읽기 전용 조회 API를 재사용합니다. 실제 조회 버튼을 누른 뒤에만 결과를 표시하며, 설정 변경·권한 상승·자동 전송은 하지 않습니다.</p>
+          <p class="pc-security-disclaimer">Windows System·Application의 최근 24시간 경고·오류 건수는 <strong>운영체제 진단 기록</strong>이며, 침해·공격 탐지 건수가 아닙니다. 0건이라도 보안상 안전함을 뜻하지 않습니다.</p>
+          <div class="row">
+            <button type="button" id="pc-security-load" class="btn" aria-describedby="pc-security-message">네트워크·보안 다시 조회</button>
+            <label for="pc-security-filter">기록 종류</label>
+            <select id="pc-security-filter" class="btn">
+              <option value="all">전체</option><option value="network">네트워크</option><option value="firewall">방화벽</option>
+              <option value="system">System</option><option value="application">Application</option>
+            </select>
+          </div>
+          <p id="pc-security-message" role="status" aria-live="polite">조회 전 · 실제 측정값 확인 불가</p>
+          <div id="pc-security-summary" class="security-status-cards" role="group" aria-label="네트워크·방화벽·Windows 기록·SDP 네 가지 상태 카드" aria-live="polite"></div>
+          <div class="security-monitor-lower">
+            <section class="security-monitor-panel" aria-labelledby="security-trend-title">
+              <h3 id="security-trend-title">경고·오류 추이</h3>
+              <p class="muted">System과 Application의 실제 성공 집계가 종류별로 2회 이상 있을 때만 변화량을 표시합니다. 기간이 겹치는 24시간 집계의 변화이며 공격 증가를 뜻하지 않습니다.</p>
+              <div id="pc-security-trends" class="security-trend-list" aria-live="polite"></div>
+            </section>
+            <section class="security-monitor-panel" aria-labelledby="security-explain-title">
+              <h3 id="security-explain-title">조회 항목 설명</h3>
+              <div id="pc-security-explanations" class="security-explanation-list"></div>
+            </section>
+          </div>
+          <section class="security-monitor-panel security-records-panel" aria-labelledby="security-records-title">
+            <h3 id="security-records-title">조회 시각순 기록 타임라인</h3>
+            <p class="muted">네트워크·방화벽의 상세 결과와 System·Application 집계 기간·오류 원인을 확인합니다. 화면 기록은 브라우저 메모리에만 남습니다.</p>
+            <ol id="pc-security-timeline" class="pc-status-timeline" aria-live="polite"></ol>
+          </section>
+        </section>
+
         <div class="grid-2">
           <section class="card provided" aria-labelledby="identity-title">
             <h2 id="identity-title">현재 로그인 <span class="tag">제공</span></h2>
@@ -122,25 +154,6 @@
         </div>
 
         
-        <section class="card pc-security-card" aria-labelledby="pc-security-title">
-          <h2 id="pc-security-title">내 PC 네트워크·보안 기록 <span class="tag tag-student">ARGUS-X 추가 기능 · 읽기 전용</span></h2>
-          <p class="muted">일반 사용자 권한으로만 조회합니다. 방화벽과 시스템 설정은 변경하지 않습니다. 결과는 브라우저 메모리에서만 관리합니다.</p>
-          <p class="pc-security-disclaimer">Windows System·Application의 경고·오류 건수는 운영체제 진단 기록이며, 침해·공격 탐지 건수가 아닙니다.</p>
-          <p id="pc-security-sdp" role="status">SDP 상태 확인 불가 · 로컬 PC 조회와 별개</p>
-          <div class="row">
-            <button type="button" id="pc-security-load" class="btn" aria-describedby="pc-security-message">네트워크·보안 다시 조회</button>
-            <label for="pc-security-filter">기록 종류</label>
-            <select id="pc-security-filter" class="btn">
-              <option value="all">전체</option><option value="network">네트워크</option><option value="firewall">방화벽</option>
-              <option value="system">System</option><option value="application">Application</option>
-            </select>
-          </div>
-          <p id="pc-security-message" role="status" aria-live="polite">조회 전 · 실제 측정값 확인 불가</p>
-          <div id="pc-security-summary" class="pc-status-summary" aria-live="polite"></div>
-          <h3>조회 시각순 기록 타임라인</h3>
-          <ol id="pc-security-timeline" class="pc-status-timeline" aria-live="polite"></ol>
-        </section>
-
         <section class="card student" aria-labelledby="student-status-title">
           <h2 id="student-status-title">학생 상태·알림 표시 <span class="tag tag-student">student/extension.mjs · renderStatus</span></h2>
           <div id="student-status" class="student-slot" aria-live="polite"></div>
