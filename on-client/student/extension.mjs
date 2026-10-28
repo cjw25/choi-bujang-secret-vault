@@ -27,11 +27,18 @@ export function createStudentView({ api } = {}) {
       ? new Date(raw).toLocaleString('ko-KR') : '확인 불가(서버 조회 시각 없음)';
   const repaintStudentRecord = () => {
     if (!studentRecordUi) return;
-    const { button, output, recordValue, recordNote, alertValue, alertNote, sourceEvents } = studentRecordUi;
+    const { button, output, recordValue, recordNote, alertValue, alertNote, refreshValue, refreshNote, sourceEvents } = studentRecordUi;
     const state = studentRecordCheck;
     button.disabled = state.phase === 'loading';
     button.textContent = state.phase === 'loading' ? '새로 읽는 중…' : '기록 다시 조회';
     button.setAttribute('aria-busy', state.phase === 'loading' ? 'true' : 'false');
+    refreshValue.textContent = state.phase === 'loading' ? '읽는 중'
+      : state.phase === 'error' ? '조회 실패'
+        : state.phase === 'ok' ? '조회 완료' : '조회 전';
+    refreshNote.textContent = state.phase === 'loading' ? '보안 기록 조회 요청 진행 중 · 아직 결과 미확정'
+      : state.phase === 'error' ? '조회 실패 · 실패 코드: ' + state.code + ' · 다음 행동은 아래 안내 참조'
+        : state.phase === 'ok' ? '실제 재조회 완료 · 서버 시각: ' + displayRecordTime(state.checkedAt)
+          : '실제 성공·오류는 아래에 표시 · PC/SDP 연결 상태와 별개';
     output.setAttribute('role', state.phase === 'error' ? 'alert' : 'status');
     if (state.phase === 'loading') {
       output.textContent = '보안 기록을 새로 읽는 중… · 이전 성공 수치는 현재 결과가 아닙니다.';
@@ -525,6 +532,9 @@ export function createStudentView({ api } = {}) {
     },
     renderStatus({ devices, sessions, notifications, diagnostics, mode, events }) {
       const root = document.createElement('div');
+      // 기존 상태·알림 아래 영역에서도 같은 검증 결과를 사용한다.
+      const eventsConnected = events?.status === 'ok' && events?.mode === 'connected' && Array.isArray(events.data);
+      const eventsDemo = events?.status === 'ok' && events?.mode === 'demo' && Array.isArray(events.data);
       // 4일차 학생 영역 우선 표시: 기록 → PC 실측 경로 → XDR 구분 → 학생 재조회 상태.
       // 상단 4개 상태 카드는 이 학생 영역에만 적용되며 제공 공통 화면은 건드리지 않는다.
       const overview = document.createElement('section');
@@ -601,11 +611,8 @@ export function createStudentView({ api } = {}) {
       studentRecordUi = { button: reloadButton, output: reloadOutput,
         recordValue: recordCard.metric, recordNote: recordCard.note,
         alertValue: xdrCard.metric, alertNote: xdrCard.note,
+        refreshValue: refreshCard.metric, refreshNote: refreshCard.note,
         sourceEvents: events };
-      refreshCard.metric.textContent = studentRecordCheck.phase === 'loading' ? '읽는 중'
-        : studentRecordCheck.phase === 'error' ? '조회 실패'
-          : studentRecordCheck.phase === 'ok' ? '조회 완료' : '조회 전';
-      refreshCard.note.textContent = '실제 성공·오류는 아래에 표시 · PC/SDP 연결 상태와 별개';
       repaintStudentRecord();
       const line = (parent, message) => {
         const p = document.createElement('p');
