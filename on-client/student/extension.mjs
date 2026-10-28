@@ -430,13 +430,13 @@ export function createStudentView() {
 
       return root;
     },
-    renderStatus({ devices, sessions, notifications, diagnostics, mode }) {
+    renderStatus({ devices, sessions, notifications, diagnostics, mode, events }) {
       const root = document.createElement('div');
-      // 학생 표시 영역만으로 동작하는 첫 화면 요약. 원천이 준 값 외 숫자를 만들지 않는다.
+      // 학생 영역은 상태를 보여줄 뿐, PC 실측 API를 호출하거나 임의 수치를 생성하지 않는다.
       const overview = document.createElement('section');
       overview.className = 'student-core-overview';
       const overviewTitle = document.createElement('h3');
-      overviewTitle.textContent = '먼저 확인할 핵심 기능 3가지';
+      overviewTitle.textContent = '1일차 핵심 기능 점검 · 기록 → PC → 위험 알림';
       overview.appendChild(overviewTitle);
       const priorities = document.createElement('ol');
       const item = (heading, description) => {
@@ -448,19 +448,18 @@ export function createStudentView() {
         li.append(strong, p);
         priorities.appendChild(li);
       };
-      const disconnected = mode === 'disconnected';
-      const demo = mode === 'demo';
-      const deviceState = devices?.status === 'ok' && Array.isArray(devices.data)
-        ? '조회된 기기 ' + devices.data.length + '개 (현재 기기 안전 판정 아님)'
-        : devices?.status === 'loading' ? '기기 조회 중'
-        : '기기 확인 불가 · 연결 및 조회 상태 확인 필요';
-      const sessionState = sessions?.status === 'ok' && Array.isArray(sessions.data)
-        ? '조회된 세션 ' + sessions.data.length + '개 (현재 연결 범위만)'
-        : sessions?.status === 'loading' ? '세션 조회 중'
-        : '세션 확인 불가 · 연결 및 조회 상태 확인 필요';
-      item('1. 내 보호 상태', (demo ? '예제 자료 · 실측 아님. ' : disconnected ? 'SDP 미연결 · ' : '') + deviceState + ' / ' + sessionState);
-      item('2. 업무 앱 접속 판정', '업무 앱 메뉴에서 직접 요청합니다. 조회 실패는 접속 거부가 아니며, 현재 판정값은 이 요약에서 확인하지 않습니다.');
-      item('3. 보안 기록 타임라인', '보안 기록 메뉴에서 최신순 기록과 종류별 필터를 확인합니다. 기록 부재는 공격 부재의 증거가 아닙니다.');
+      const eventsConnected = events?.status === 'ok' && events?.mode === 'connected' && Array.isArray(events.data);
+      const eventsDemo = events?.status === 'ok' && events?.mode === 'demo';
+      item('1. 기록 보기', eventsConnected
+        ? '실제 본인 기록 ' + events.data.length + '건 조회됨 · 보안 기록 메뉴에서 종류별 필터 확인'
+        : eventsDemo ? '예제 기록만 조회됨 · 실제 기록 아님'
+        : events?.status === 'loading' ? '기록 조회 중 · 결과 미확인'
+        : events?.status === 'error' ? '기록 화면은 구현됨 · 원천 조회 실패, 연결 어댑터 확인 필요'
+        : '기록 화면은 구현됨 · 현재 원천 조회 미확인');
+      item('2. 내 PC 상태', '상단 내 PC 상태에서 다시 조회 후 실측 결과 확인 · 이 학생 영역에는 PC 측정값을 전달받지 않으므로 임의 수치를 표시하지 않습니다.');
+      item('3. 위험 알림', eventsConnected
+        ? '현재 본인 기록 범위의 XDR 경보 ' + events.data.filter(row => row.kind === 'xdr').length + '건 · 알림 전달 기능은 검증 전'
+        : '실제 위험 알림 연동 미검증 · 원천 연결과 XDR 기록 조회 상태 확인 필요');
       overview.appendChild(priorities);
       root.appendChild(overview);
 
@@ -576,25 +575,52 @@ export function createStudentView() {
 
       line(root, '세션 조회는 현재 검증된 연결 한 건만 대상으로 합니다.');
 
+      // 오류 메시지를 보안 탐지로 잘못 표시하지 않는다. 알림 전송 기능은 별도 미검증이다.
+      const noticeCategory = (entry) => {
+        if (['lookup-error', 'xdr-event', 'state-warning'].includes(entry?.category)) return entry.category;
+        if (entry?.resource === 'events' && entry?.code === 'xdr') return 'xdr-event';
+        if (entry?.resource === 'devices' && ['noncompliant', 'unknown'].includes(entry?.code)) return 'state-warning';
+        if (entry?.resource === 'sessions' && ['expired', 'revoked', 'unknown'].includes(entry?.code)) return 'state-warning';
+        return 'lookup-error';
+      };
       const notices = document.createElement('section');
       const noticeHeading = document.createElement('h4');
-      noticeHeading.textContent = '보안 알림';
+      noticeHeading.textContent = '위험 알림 · 원천 조회 상태와 분리';
       notices.appendChild(noticeHeading);
-
       if (!Array.isArray(notifications)) {
-        line(notices, '알림 자료 형식 확인 불가');
-      } else if (notifications.length === 0) {
-        line(notices, '현재 전달된 알림이 없습니다. 전체 위험 없음 또는 XDR 정상 상태를 뜻하지 않습니다.');
+        line(notices, '알림 자료 형식 확인 불가 · 실제 위험 여부 판단 불가');
       } else {
-        for (const notification of notifications) {
-          line(
-            notices,
-            `자료(resource): ${value(notification?.resource)} · 코드(code): ${value(notification?.code)} · 내용(message): ${value(notification?.message)}`
-          );
-        }
-      }
+        const xdr = notifications.filter(entry => noticeCategory(entry) === 'xdr-event');
+        const warnings = notifications.filter(entry => noticeCategory(entry) === 'state-warning');
+        const errors = notifications.filter(entry => noticeCategory(entry) === 'lookup-error');
 
-      root.appendChild(notices);
+        if (eventsConnected) {
+          line(notices, `실제 연결된 본인 기록에서 XDR 경보 ${xdr.length}건 확인 (현재 조회 범위만). 알림 전송·실시간 탐지 연동은 검증되지 않았습니다.`);
+          for (const entry of xdr) line(notices, `XDR 기록 · ${value(entry?.message)}`);
+        } else if (eventsDemo) {
+          line(notices, `예제 XDR 기록 ${xdr.length}건 · 실제 위험 탐지 또는 알림이 아닙니다.`);
+        } else {
+          line(notices, '실제 위험 알림 미검증 · 기록 조회 실패/미연결은 위험 없음이나 공격 탐지로 해석하지 않습니다.');
+        }
+
+        if (warnings.length > 0) {
+          line(notices, '기기·세션 상태 확인 필요 (공격 탐지로 확정하지 않음):');
+          for (const entry of warnings) line(notices, `${value(entry?.resource)} · ${value(entry?.message)}`);
+        }
+
+        const issues = document.createElement('section');
+        const heading = document.createElement('h4');
+        heading.textContent = '연결·조회 오류 (위험 탐지 결과 아님)';
+        issues.appendChild(heading);
+        if (errors.length === 0) line(issues, '현재 전달된 연결·조회 오류 메시지가 없습니다.');
+        else for (const entry of errors) {
+          line(issues, `${value(entry?.resource)} · ${value(entry?.code)} · ${value(entry?.message)}`);
+        }
+        if (errors.length) line(issues, '다음: 기존 서버·에이전트 연결 어댑터를 확인하고 상단 다시 불러오기를 직접 누르세요.');
+        root.appendChild(notices);
+        root.appendChild(issues);
+      }
+      if (!Array.isArray(notifications)) root.appendChild(notices);
 
       const diag = document.createElement('section');
       const heading = document.createElement('h4');
