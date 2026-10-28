@@ -1526,11 +1526,58 @@ function securityDetails(record){
   if(record.kind==='firewall')return d.profiles.map(x=>x.name+' · 활성화 '+x.enabled+' · 기본 수신 '+(x.inbound||'확인 불가')+' · 기본 송신 '+(x.outbound||'확인 불가'));
   return ['집계 기간 '+formatTime(d.windowStart)+' ~ '+formatTime(d.windowEnd)+' (브라우저 지역 시간)'];
 }
+let securitySdpMode='unknown';
+let securitySdpReason='아직 SDP 연결 상태를 조회하지 않았습니다.';
 function renderSecuritySummary(){
-  setChildren($('pc-security-summary'),...Object.keys(securityLabels).map(kind=>{
-    const r=securityLatest.get(kind);
-    return el('p',{text:securityLabels[kind]+' · '+(!securityCurrentVerified&&r?'현재 확인 불가 · 과거 조회 기록: ':'')+(r?securityDescription(r):'확인 불가 · 아직 조회하지 않았습니다.')+' · 조회 시각 '+(r?formatTime(r.checkedAt):'미측정')});
-  }));
+  const cards=[];
+  const current=kind=>securityCurrentVerified?securityLatest.get(kind):null;
+  const add=(title,main,description,time,ok)=>{
+    cards.push(el('article',{className:'pc-metric-card security-metric-card','data-status':ok?'ok':'unknown'},[
+      el('h3',{text:title}),el('p',{className:'pc-metric-value',text:main}),
+      el('p',{className:'pc-metric-time',text:'조회 시각: '+(time?formatTime(time):'미측정')}),
+      el('p',{className:'pc-metric-reason',text:description})
+    ]));
+  };
+  for(const kind of ['network','firewall']){
+    const r=current(kind);
+    add(kind==='network'?'네트워크 연결':'Windows 방화벽',
+      r?.status==='ok'?(kind==='network'?r.data.adapters.length+'개 어댑터':r.data.profiles.length+'개 프로필'):'확인 불가',
+      r?securityDescription(r):securityLoading?'조회 중 · 아직 현재 결과 없음':'조회 전·실패 · 현재 확인 불가',
+      r?.checkedAt,r?.status==='ok');
+  }
+  const system=current('system'),application=current('application');
+  const both=system?.status==='ok'&&application?.status==='ok';
+  const logReason=[system,application].map((r,i)=>r?.status==='error'?(i===0?'System':'Application')+' · '+securityDescription(r):null).filter(Boolean).join(' / ');
+  add('Windows 경고·오류',both
+    ?'경고 '+(system.data.warning+application.data.warning)+'건 · 오류 '+(system.data.error+application.data.error)+'건'
+    :'확인 불가',
+    both?'최근 24시간 각 로그 집계 합계 · 침해·공격 탐지 건수 아님'
+      :logReason||'System·Application 둘 다 성공해야 합계를 표시합니다. 자세한 내용은 아래 기록 확인',
+    both?[system.checkedAt,application.checkedAt].sort().at(-1):null,both);
+  const mode=securitySdpMode;
+  const sdpMain=mode==='disconnected'?'SDP 미연결':mode==='demo'?'SDP 예제 모드':'확인 불가';
+  const sdpDescription=mode==='disconnected'?'기존 서버·에이전트 연결 어댑터 미연결 · PC 조회와 별개'
+    :mode==='demo'?'예제 모드 · 실제 SDP 연결 아님'
+    :securitySdpReason;
+  add('SDP 서버',sdpMain,sdpDescription,null,false);
+  setChildren($('pc-security-summary'),...cards);
+  const trends=[];
+  for(const kind of ['system','application']){
+    const row=current(kind);
+    const prior=row?.previous??null;
+    const label=kind==='system'?'System':'Application';
+    const explanation=row?.status==='ok'&&prior
+      ?'경고 '+(row.data.warning-prior.warning>=0?'+':'')+(row.data.warning-prior.warning)+'건 · 오류 '+(row.data.error-prior.error>=0?'+':'')+(row.data.error-prior.error)+'건'
+      :'비교 불가 · 같은 종류의 성공 조회 2회 필요';
+    trends.push(el('p',{text:label+' · '+explanation}));
+  }
+  setChildren($('pc-security-trends'),...trends);
+  setChildren($('pc-security-explanations'),
+    el('p',{text:'네트워크 · 활성 어댑터 구성, IPv4/IPv6·게이트웨이·DNS를 일반 사용자 권한으로 읽습니다. 인터넷 접속 성공을 증명하지 않습니다.'}),
+    el('p',{text:'방화벽 · 현재 적용된 Domain/Private/Public 프로필을 읽기만 합니다. 프로필 개수로 켜짐·꺼짐을 판정하지 않으며 활성화 세부값은 아래 기록에서 확인합니다.'}),
+    el('p',{text:'Windows 기록 · System과 Application의 최근 24시간 경고·오류를 각각 집계합니다. 침해·공격 탐지 건수가 아닙니다.'}),
+    el('p',{text:'SDP · 어댑터가 명시적으로 미연결일 때만 SDP 미연결로 표시합니다. 연결 검증 근거가 없으면 확인 불가입니다.'})
+  );
 }
 function renderSecurityHistory(){
   const filter=$('pc-security-filter').value;
@@ -1541,15 +1588,17 @@ function renderSecurityHistory(){
     ...securityDetails(r).map(x=>el('p',{className:'muted',text:x}))
   ])):[el('li',{className:'muted',text:'해당 종류의 조회 기록 없음 · 확인 불가'})]));
 }
-function renderSecuritySdp(mode){
-  $('pc-security-sdp').textContent=mode==='disconnected'?'SDP 미연결 · 로컬 PC 조회와 별개':
-    mode==='demo'?'SDP 예제 모드 · 실제 SDP 연결 아님':
-    'SDP 실제 연결 확인 불가 · 로컬 PC 조회와 별개';
+function renderSecuritySdp(mode,reason){
+  securitySdpMode=['disconnected','demo'].includes(mode)?mode:'unknown';
+  securitySdpReason=reason||'SDP 실제 연결 성공 여부를 검증하지 못했습니다. 로컬 PC 조회와 별개';
+  renderSecuritySummary();
 }
 async function loadSecurity(){
   if(securityLoading)return;
   securityLoading=true;
   securityCurrentVerified=false;
+  securitySdpMode='unknown';
+  securitySdpReason='조회 중 · SDP 서버 상태 확인 전';
   renderSecuritySummary();
   $('pc-security-load').disabled=true;
   $('pc-security-load').textContent='조회 중…';
@@ -1558,10 +1607,10 @@ async function loadSecurity(){
     const result=await request('/api/pc-security',{timeoutMs:14000});
     if(!result.ok){
       $('pc-security-message').textContent='확인 불가 · '+result.error.message+' ('+result.error.code+') · 다음: 로컬 서버/Windows 조회 상태를 확인한 뒤 네트워크·보안 다시 조회를 누르세요.';
-      renderSecuritySdp(result.meta?.mode);
+      renderSecuritySdp('unknown','PC 조회 요청 실패 · SDP 연결 상태를 확인하지 못했습니다 ('+result.error.code+')');
       return;
     }
-    renderSecuritySdp(result.data?.sdpMode);
+    renderSecuritySdp(result.data?.sdpMode,'서버 어댑터 모드만 확인 · 실제 SDP 연결 검증 근거 없음');
     if(result.data?.source!=='windows-powershell-readonly'||!Array.isArray(result.data.items)||result.data.items.length!==4||
       new Set(result.data.items.map(x=>x.kind)).size!==4){
       $('pc-security-message').textContent='확인 불가 · 보안 조회 응답의 형식을 검증하지 못했습니다.';
@@ -1573,13 +1622,19 @@ async function loadSecurity(){
       return;
     }
     securityCurrentVerified=true;
-    for(const record of rows){securityLatest.set(record.kind,record);securityHistory.push(record);}
+    for(const record of rows){
+      if(record.status==='ok'&&['system','application'].includes(record.kind)){
+        const prior=[...securityHistory].reverse().find(x=>x.kind===record.kind&&x.status==='ok');
+        record.previous=prior?{warning:prior.data.warning,error:prior.data.error}:null;
+      }
+      securityLatest.set(record.kind,record);securityHistory.push(record);
+    }
     securityHistory.sort((a,b)=>Date.parse(b.checkedAt)-Date.parse(a.checkedAt));
     if(securityHistory.length>80)securityHistory.length=80;
     const successes=rows.filter(x=>x.status==='ok').length;
     $('pc-security-message').textContent='Windows PC 조회 '+successes+'/4종 성공 · 실패 항목은 확인 불가 · 읽기 전용 · 로그 건수는 공격 탐지 결과 아님';
     renderSecuritySummary();renderSecurityHistory();
-  }finally{securityLoading=false;$('pc-security-load').disabled=false;$('pc-security-load').textContent='네트워크·보안 다시 조회';}
+  }finally{securityLoading=false;renderSecuritySummary();$('pc-security-load').disabled=false;$('pc-security-load').textContent='네트워크·보안 다시 조회';}
 }
 
 function init() {
