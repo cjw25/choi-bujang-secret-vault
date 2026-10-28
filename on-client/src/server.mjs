@@ -1,4 +1,5 @@
 import http from 'node:http';
+import {readPcStatus} from './pc-status.mjs';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {resolve} from 'node:path';
@@ -680,6 +681,11 @@ export function createOnServer(serverOptions={}) {
         assertAlive();
         send(200,{ok:true,data:guide});return;
         }finally{closeNativeHostOperation(nativeOperation);}
+      }
+      if(req.method==='GET'&&url.pathname==='/api/pc-status'){
+        if(req.headers.authorization!==undefined)throw engineError('REQUEST_INVALID','',400);
+        const data=await bounded(signal=>readPcStatus({projectDirectory:root,signal}));
+        send(200,{ok:true,data});return;
       }
       if(req.method==='GET'&&url.pathname==='/api/diagnostics'){
         // 자동 호출이나 비밀 원문·전체 설정 출력 없이 로컬 연결 상태만 진단한다.
