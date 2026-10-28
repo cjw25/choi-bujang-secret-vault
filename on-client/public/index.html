@@ -45,6 +45,7 @@
 
       <section id="view-protection" class="view" role="tabpanel" aria-labelledby="tab-protection">
         <h1>보호 현황</h1>
+        <section class="core-first" aria-label="핵심 기능 바로가기"><h2>핵심 기능 3가지</h2><nav class="core-shortcuts" aria-label="핵심 기능"><a href="#student-identity-title">1. 내 보호 상태</a><a href="#tab-apps" data-core-tab="apps">2. 업무 앱 접속 판정</a><a href="#tab-records" data-core-tab="records">3. 보안 기록 타임라인</a></nav><p class="muted">현재 연결과 조회 결과를 각각 확인하세요. 예제 자료는 실제 측정값이 아닙니다.</p></section>
 
         <div class="grid-2">
           <section class="card provided" aria-labelledby="identity-title">
@@ -77,7 +78,7 @@
           <h2 id="pc-status-title">내 PC 상태 <span class="tag tag-student">ARGUS-X 추가 기능 · 일반 사용자 권한</span></h2>
           <p class="muted">현재 프로젝트 PC의 CPU·메모리·디스크 수치를 직접 조회합니다. 조회 전이나 오류는 정상값이 아니라 확인 불가입니다. 저장하지 않는 임시 기록입니다.</p>
           <div class="row">
-            <button type="button" id="pc-status-load" class="btn">PC 상태 조회</button>
+            <button type="button" id="pc-status-load" class="btn" aria-describedby="pc-status-message">PC 상태 다시 조회</button>
             <label for="pc-status-filter">기록 종류</label>
             <select id="pc-status-filter" class="btn"><option value="all">전체</option><option value="cpu">CPU</option><option value="memory">메모리</option><option value="disk">디스크</option></select>
           </div>
@@ -93,7 +94,7 @@
           <p class="pc-security-disclaimer">Windows System·Application의 경고·오류 건수는 운영체제 진단 기록이며, 침해·공격 탐지 건수가 아닙니다.</p>
           <p id="pc-security-sdp" role="status">SDP 상태 확인 불가 · 로컬 PC 조회와 별개</p>
           <div class="row">
-            <button type="button" id="pc-security-load" class="btn">네트워크·보안 상태 조회</button>
+            <button type="button" id="pc-security-load" class="btn" aria-describedby="pc-security-message">네트워크·보안 다시 조회</button>
             <label for="pc-security-filter">기록 종류</label>
             <select id="pc-security-filter" class="btn">
               <option value="all">전체</option><option value="network">네트워크</option><option value="firewall">방화벽</option>
