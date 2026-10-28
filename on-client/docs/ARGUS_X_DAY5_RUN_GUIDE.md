@@ -40,11 +40,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\start-alekov.ps1
 ## 5. 다른 사람의 독립 실행 기록 (2026-10-28, 사용자 전달 결과)
 - **안내서만 보고 앱 실행: 성공(테스터 보고)**. 테스트 대상 PC의 Node.js 정확한 버전·개인 신원은 미제공.
 - **실제로 성공:** CPU·메모리·디스크 3종 실측 및 반복 조회 비교, 네트워크·방화벽 조회.
-- **실패:** System/Application 로그 `QUERY_FAILED`, 보안 기록·계정·기기·세션 `ENGINE_NOT_CONNECTED`. AI 연결 및 Tab/Enter 키보드 조작 **미검증**.
+- **첫 독립 실행 당시 실패:** System/Application 로그 `QUERY_FAILED`, 보안 기록·계정·기기·세션 `ENGINE_NOT_CONNECTED`. AI 연결 및 Tab/Enter 키보드 조작은 **미검증**.
 - **원인 재현:** 동일 PC에서 System·Application 모두 `DateTimeExpected,Microsoft.PowerShell.Commands.GetWinEventCommand` / `26-10-28(수) 오후 3:46:43 값은 올바른 DateTime 형식이 아닙니다.` 출력. **기존 날짜 매개변수 처리에서 지역화된 날짜 문자열을 인식하지 못한 것**으로 확인.
 - **수정 방법 사전 검증:** 동일 PC의 `Get-WinEvent -LogName ... -FilterXPath '*[System[(Level=2 or Level=3) and TimeCreated[timediff(@SystemTime) <= 86400000]]]'` 방식으로 System / Application **둘 다 XPath 조회 성공**. 이 시험은 각 로그 최대 **1건**만 확인한 것이며 전체 집계 성공 증거는 아님.
 - **원인 분류:** 로그 조회는 **코드의 날짜 형식 호환성 문제**로 보고 `src/pc-security.mjs`의 System/Application 조회 조건만 수정; SDP는 **별도 외부 연결 설정/어댑터 문제**로 본다. 앱을 켰다는 사실만으로 원천 연결이 된 것은 아님.
-- **수정 후 재검증:** **아직 미실시**. 다른 PC에서 **수정본 폴더**로 아래 순서를 다시 실행하고 결과를 기록할 것. 이전 ZIP/프로젝트 폴더는 삭제·이동·덮어쓰지 않음.
+- **수정 후 재검증(사용자 전달 최신 실행 결과):** 수정된 ARGUS-X에서 **네트워크·보안 다시 조회 4/4종 성공**, System **경고 160건·오류 20건**, Application **경고 9건·오류 5건** (모두 해당 실행의 **실측 집계**, 예시 값 아님). 집계 기간 표시 확인. 기존 `QUERY_FAILED`가 두 로그에서 해소됨. **SDP는 계속 미연결**이며, 보안 기록·계정·기기·세션 연결 성공으로 해석하지 않음.
+- **검증 범위:** 위 4/4종과 건수는 사용자가 전달한 최신 실행 보고 기준이며, 테스트한 사람·PC가 최초 독립 실행과 동일한지는 추가 확인되지 않았음. AI 연결 및 Tab/Enter 키보드 조작은 **해당 독립 실행 환경에서 미검증**. 이전 ZIP/프로젝트 폴더는 삭제·이동·덮어쓰지 않음.
 
 ### 수정본 재검증 순서
 1. 기존 실행 창에서 Ctrl+C로 로컬 서버 종료. Git 작업 폴더를 사용하는 경우 **해당 작업 브랜치**의 수정본을 반영하고, ZIP으로 받은 프로젝트라면 새 ZIP/폴더를 **별도 위치**에 받아 원본 보존 (ZIP 폴더에서 Git pull을 시도하지 않음).
