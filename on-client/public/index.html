@@ -73,6 +73,20 @@
           </section>
         </div>
 
+        <section class="card pc-status-card" aria-labelledby="pc-status-title">
+          <h2 id="pc-status-title">내 PC 상태 <span class="tag tag-student">ARGUS-X 추가 기능 · 일반 사용자 권한</span></h2>
+          <p class="muted">현재 프로젝트 PC의 CPU·메모리·디스크 수치를 직접 조회합니다. 조회 전이나 오류는 정상값이 아니라 확인 불가입니다. 저장하지 않는 임시 기록입니다.</p>
+          <div class="row">
+            <button type="button" id="pc-status-load" class="btn">PC 상태 조회</button>
+            <label for="pc-status-filter">기록 종류</label>
+            <select id="pc-status-filter" class="btn"><option value="all">전체</option><option value="cpu">CPU</option><option value="memory">메모리</option><option value="disk">디스크</option></select>
+          </div>
+          <p id="pc-status-message" role="status" aria-live="polite">조회 전 · 실측값 확인 불가</p>
+          <div id="pc-status-summary" class="pc-status-summary" aria-live="polite"></div>
+          <h3>조회 시각순 기록 타임라인</h3>
+          <ol id="pc-status-timeline" class="pc-status-timeline" aria-live="polite"></ol>
+        </section>
+
         <section class="card student" aria-labelledby="student-status-title">
           <h2 id="student-status-title">학생 상태·알림 표시 <span class="tag tag-student">student/extension.mjs · renderStatus</span></h2>
           <div id="student-status" class="student-slot" aria-live="polite"></div>
