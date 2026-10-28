@@ -45,7 +45,36 @@
 
       <section id="view-protection" class="view" role="tabpanel" aria-labelledby="tab-protection">
         <h1>보호 현황</h1>
-        <section class="core-first" aria-labelledby="day1-check-title">
+        <section class="card pc-status-card pc-control-board" aria-labelledby="pc-status-title">
+          <h2 id="pc-status-title">내 PC 상태 <span class="tag tag-student">ARGUS-X 추가 기능 · 일반 사용자 권한</span></h2>
+          <p class="muted">기존 로컬 PC 측정 API를 재사용합니다. CPU·메모리·디스크는 버튼 클릭 때만 실측하며, 조회 전·실패·예시 값을 현재 정상 수치로 표시하지 않습니다.</p>
+          <div class="row">
+            <button type="button" id="pc-status-load" class="btn" aria-describedby="pc-status-message">PC 상태 다시 조회</button>
+            <label for="pc-status-filter">기록 종류</label>
+            <select id="pc-status-filter" class="btn"><option value="all">전체</option><option value="cpu">CPU</option><option value="memory">메모리</option><option value="disk">디스크</option></select>
+          </div>
+          <p id="pc-status-message" role="status" aria-live="polite">조회 전 · 실측값 확인 불가</p>
+          <div id="pc-status-summary" class="pc-status-cards" role="group" aria-label="CPU·메모리·디스크 및 조회 상태 카드 4개" aria-live="polite"></div>
+          <div class="pc-monitor-lower">
+            <section class="pc-monitor-panel" aria-labelledby="pc-trend-title">
+              <h3 id="pc-trend-title">직전 성공값 대비 추이</h3>
+              <p class="muted">같은 지표의 실제 성공 조회가 2회 이상일 때만 증감량을 표시합니다.</p>
+              <div id="pc-status-trends" class="pc-trend-list" aria-live="polite"></div>
+            </section>
+            <section class="pc-monitor-panel" aria-labelledby="pc-explain-title">
+              <h3 id="pc-explain-title">측정값 설명</h3>
+              <p class="muted">일반 사용자 권한의 로컬 자료를 해석합니다. 수치가 공격이나 위험 알림을 의미하지는 않습니다.</p>
+              <div id="pc-status-explanations" class="pc-explanation-list"></div>
+            </section>
+          </div>
+          <section class="pc-monitor-panel pc-records-panel" aria-labelledby="pc-records-title">
+            <h3 id="pc-records-title">조회 시각순 기록 타임라인</h3>
+            <p class="muted">값·단위·잰 시각과 실패 이유를 보관하는 임시 화면 기록입니다. 새로고침 시 사라지며 외부 전송·저장은 하지 않습니다.</p>
+            <ol id="pc-status-timeline" class="pc-status-timeline" aria-live="polite"></ol>
+          </section>
+        </section>
+
+                <section class="core-first" aria-labelledby="day1-check-title">
           <h2 id="day1-check-title">1일차 기능 점검표 <span class="tag">실행 상태 · 설명용 예시 아님</span></h2>
           <p class="muted">상태는 실제 요청 결과와 연결 모드를 기준으로 표시합니다. 조회 전·실패·예제는 성공으로 표시하지 않습니다.</p>
           <div class="core-shortcuts" aria-label="1일차 핵심 기능">
@@ -92,20 +121,7 @@
           </section>
         </div>
 
-        <section class="card pc-status-card" aria-labelledby="pc-status-title">
-          <h2 id="pc-status-title">내 PC 상태 <span class="tag tag-student">ARGUS-X 추가 기능 · 일반 사용자 권한</span></h2>
-          <p class="muted">현재 프로젝트 PC의 CPU·메모리·디스크 수치를 직접 조회합니다. 조회 전이나 오류는 정상값이 아니라 확인 불가입니다. 저장하지 않는 임시 기록입니다.</p>
-          <div class="row">
-            <button type="button" id="pc-status-load" class="btn" aria-describedby="pc-status-message">PC 상태 다시 조회</button>
-            <label for="pc-status-filter">기록 종류</label>
-            <select id="pc-status-filter" class="btn"><option value="all">전체</option><option value="cpu">CPU</option><option value="memory">메모리</option><option value="disk">디스크</option></select>
-          </div>
-          <p id="pc-status-message" role="status" aria-live="polite">조회 전 · 실측값 확인 불가</p>
-          <div id="pc-status-summary" class="pc-status-summary" aria-live="polite"></div>
-          <h3>조회 시각순 기록 타임라인</h3>
-          <ol id="pc-status-timeline" class="pc-status-timeline" aria-live="polite"></ol>
-        </section>
-
+        
         <section class="card pc-security-card" aria-labelledby="pc-security-title">
           <h2 id="pc-security-title">내 PC 네트워크·보안 기록 <span class="tag tag-student">ARGUS-X 추가 기능 · 읽기 전용</span></h2>
           <p class="muted">일반 사용자 권한으로만 조회합니다. 방화벽과 시스템 설정은 변경하지 않습니다. 결과는 브라우저 메모리에서만 관리합니다.</p>
