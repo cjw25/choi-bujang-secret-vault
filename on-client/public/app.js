@@ -1399,11 +1399,54 @@ function renderPcHistory(){
   }));
 }
 function renderPcSummary(){
-  setChildren($('pc-status-summary'),...Object.entries(pcMetrics).map(([kind,info])=>{
+  const labels = {cpu:'CPU 사용률',memory:'메모리 사용량',disk:'디스크 여유 공간'};
+  const descriptions = {
+    cpu:'시스템 전체 CPU 시간 차이로 계산한 약 300ms 평균입니다. 한 번의 높은 수치만으로 침해나 장시간 과부하를 판정하지 않습니다.',
+    memory:'시스템 전체 메모리의 사용량 추정값(os.totalmem − os.freemem)입니다. 한 프로그램의 메모리 사용량이 아닙니다.',
+    disk:'프로젝트가 있는 파일시스템에서 일반 사용자가 이용할 수 있는 남은 공간입니다. PC 전체 디스크의 합계가 아닙니다.'
+  };
+  const cards=[];
+  const trends=[];
+  const explanations=[];
+  for(const [kind,info] of Object.entries(pcMetrics)){
     const row=pcLatest.get(kind);
-    return el('p',{text:info.name+' · '+(!pcCurrentVerified&&row?'현재 확인 불가 · 마지막 성공/실패 조회 기록: ': '')+(row ? row.status==='ok'?row.value+' '+row.unit:'확인 불가 · '+row.reason : '확인 불가 · 아직 조회하지 않았습니다.')
-      +' · 측정 시각: '+(row?formatTime(row.measuredAt):'미측정')});
-  }));
+    const current=pcCurrentVerified && row?.status==='ok';
+    const currentFailure=pcCurrentVerified && row?.status==='error';
+    const value=current ? row.value+' '+row.unit : '확인 불가';
+    const reason= current ? '실제 로컬 PC 측정 성공'
+      : currentFailure ? row.reason
+      : pcLoading ? '측정 진행 중 · 아직 현재 결과 없음'
+      : !row ? '아직 조회하지 않았습니다.'
+      : '이번 조회가 완료되지 않았습니다. 이전 기록은 아래에서 확인하세요.';
+    const time=current || currentFailure ? formatTime(row.measuredAt) : '미측정';
+    cards.push(el('article',{className:'pc-metric-card', 'data-status':current?'ok':'unknown'},[
+      el('h3',{text:labels[kind]}),
+      el('p',{className:'pc-metric-value',text:value}),
+      el('p',{className:'pc-metric-time',text:'측정 시각: '+time}),
+      el('p',{className:'pc-metric-reason',text:reason})
+    ]));
+    const change=current && row.previous!==null
+      ? '직전 성공값 대비 '+(row.value-row.previous>=0?'+':'')+Number((row.value-row.previous).toFixed(2))+' '+info.delta
+      : '비교 불가 · 같은 지표의 성공 조회 2회 필요';
+    trends.push(el('p',{text:labels[kind]+' · '+change}));
+    explanations.push(el('p',{text:labels[kind]+' · '+descriptions[kind]}));
+  }
+  const ok=pcCurrentVerified?Object.keys(pcMetrics).filter(kind=>pcLatest.get(kind)?.status==='ok').length:0;
+  const statusText=pcLoading?'조회 중 · 결과 미확인'
+    :!pcCurrentVerified?'확인 불가 · 현재 조회 미완료'
+    :'실제 조회 '+ok+'/3종 성공'+(ok<3?' · 실패 지표 확인 필요':'');
+  const checked=pcCurrentVerified
+    ?Object.keys(pcMetrics).map(kind=>pcLatest.get(kind)?.measuredAt).filter(Boolean).sort().at(-1)
+    :null;
+  cards.push(el('article',{className:'pc-metric-card pc-overall-card','data-status':pcCurrentVerified&&ok===3?'ok':'unknown'},[
+    el('h3',{text:'조회 상태'}),
+    el('p',{className:'pc-metric-value',text:pcLoading?'조회 중':pcCurrentVerified?ok+'/3 성공':'확인 불가'}),
+    el('p',{className:'pc-metric-time',text:'측정 시각: '+(checked?formatTime(checked):'미측정')}),
+    el('p',{className:'pc-metric-reason',text:statusText+' · 자동 전송/저장 없음'})
+  ]));
+  setChildren($('pc-status-summary'),...cards);
+  setChildren($('pc-status-trends'),...trends);
+  setChildren($('pc-status-explanations'),...explanations);
 }
 async function loadPcStatus(){
   if(pcLoading)return;
@@ -1431,7 +1474,6 @@ async function loadPcStatus(){
       return;
     }
     pcCurrentVerified=true;
-    renderDay1();
     for(const row of rows){
       const prior=pcLastSuccessful.get(row.kind);
       row.previous=row.status==='ok' && prior ? prior.value : null;
@@ -1441,12 +1483,14 @@ async function loadPcStatus(){
     }
     pcHistory.sort((a,b)=>Date.parse(b.measuredAt)-Date.parse(a.measuredAt));
     if(pcHistory.length>60)pcHistory.length=60;
+    renderDay1();
     const ok=rows.filter(x=>x.status==='ok').length;
     $('pc-status-message').textContent='실제 로컬 PC 조회 '+ok+'/3종 성공 · 실패 항목은 확인 불가로 표시 · 자동 전송/저장 없음';
     renderPcSummary();
     renderPcHistory();
   }finally{
     pcLoading=false;
+    renderPcSummary();
     $('pc-status-load').disabled=false;
     $('pc-status-load').textContent='PC 상태 다시 조회';
     renderDay1();
