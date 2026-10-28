@@ -67,3 +67,33 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\start-alekov.ps1
 - GitHub에 반영된 코드와 파일 변경 범위는 커밋 비교로 확인.
 - **사용자 PC의 실제 네트워크 설정·방화벽 프로필·Windows 로그 건수는 현재 미확인**. 성공·실패 건수를 미리 만들어서 적지 않는다.
 - Windows PowerShell 실행 및 실제 브라우저 기능 테스트는 사용자 PC에서 실행한 후에만 PASS로 확정한다.
+
+## 3일차 승인 후 관제 화면 개선 (2026-10-28)
+- 승인된 변경 파일은 `public/index.html`, `public/app.js`, `public/style.css`, 이 문서의 네 개뿐. 기존 측정·서버 모듈 및 학생 코드, 원본 작업 폴더와 이미 제출한 22단계 커밋은 수정하지 않았다.
+- 화면 순서: **1일차 기능 점검표 → 2일차 PC 실측 대시보드 → 3일차 네트워크·보안 관제 → 제공 신원/기기/세션**. 3일차는 네트워크, 방화벽, Windows System+Application 경고·오류 합계, SDP 서버 상태의 네 카드 및 그 아래 추이/설명/타임라인.
+- Windows 집계 합계는 **System과 Application의 해당 조회 성공이 모두 확인될 때만** 보여 준다. 한쪽이라도 실패하면 `확인 불가`와 해당 종류의 실패 이유를 표시하며, 성공한 개별 자료는 기록에 보존한다. 건수는 침해·공격 판정이 아니다.
+- System과 Application의 성공 집계 2회부터 각각 경고/오류 증감량(단위 건)을 비교한다. 이는 서로 겹치는 최근 24시간 집계창의 차이이며 사고 급증이나 공격 증가를 뜻하지 않는다. 실패 후 이전 성공값으로 현재 상태를 덮어쓰지 않는다.
+- 서버의 `/api/pc-security` 성공 응답에 `sdpMode:'disconnected'`가 명시적으로 있을 때만 `SDP 미연결`, `demo`이면 예제 모드. 모드가 불명확하거나 요청 자체가 실패한 경우 `확인 불가`와 이유 표시. 설정상 `connected`라고 해도 실제 SDP 통신 성공 증명이 없으므로 연결됨으로 표시하지 않는다.
+- **현재 API의 SDP 표시는 서버 어댑터 모드에 근거**하며 독립적인 실제 SDP 연결 시험이나 세션 검증을 수행하지 않는다. 따라서 `disconnected`는 구성된 기존 서버·에이전트 어댑터의 미연결 상태를 뜻하며 모든 외부 SDP 서버의 네트워크 도달 불가를 입증하지 않는다.
+- PC 조회 성공과 SDP 연결 상태는 독립 표기. 네트워크 카드의 어댑터 수가 0이 아니더라도 인터넷·SDP 접속 성공으로 단정하지 않는다. 방화벽 프로필 개수가 양수라도 모든 프로필 켜짐으로 표시하지 않고 세부 상태는 읽기 전용 기록에서만 보여 준다.
+- 조회 전/실패/요청 중에는 새 결과를 성공으로 표시하지 않는다. IP·게이트웨이·DNS 등 네트워크 상세 정보는 화면 공유 전에 가리고 제출한다.
+- 관리자 권한, 방화벽 정책 변경, UAC, 침투 시험, 설치/포장 명령은 수행하지 않음. 프로젝트 폴더에서만 실행. `package.json` 버전 `0.2.11` 유지.
+
+### 3일차 재현 절차 (일반 권한 Windows PowerShell)
+~~~powershell
+git -C "C:\github\ARGUS-X-22-repro" status --short --branch
+git -C "C:\github\ARGUS-X-22-repro" pull --ff-only origin argus-x-pc-timeline-0211
+Set-Location "C:\github\ARGUS-X-22-repro\on-client"
+npm.cmd run check
+node --check .\public\app.js
+node --check .\src\pc-security.mjs
+node --check .\src\server.mjs
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\start-alekov.ps1
+~~~
+1. 기존 서버가 실행 중이라면 해당 창에서 Ctrl+C로 먼저 종료. 현재 프로젝트 폴더에서 위 명령으로 시작하고 `http://127.0.0.1:5189/` 접속.
+2. 1일차, 2일차, 3일차가 순서대로 보이는지 확인. 3일차 카드 4개는 조회 전 `확인 불가`여야 한다.
+3. `네트워크·보안 다시 조회` 클릭 후 Windows 4종 응답의 조회 성공 건수, 각 카드의 시각, 개별 System/Application의 최근 24시간 경고·오류 건수와 원래 집계창을 타임라인에서 확인. 실제 숫자를 예시와 혼동하지 않는다.
+4. `SDP 미연결`은 명시적 미연결 모드 근거가 있을 때만 표시하는지, 조회 실패·모호한 모드에서는 `확인 불가`가 표시되는지 점검. PC 성공으로 SDP 성공 처리하지 않는다.
+5. 같은 버튼을 새로고침 없이 다시 누르고 System/Application 성공 2회 집계의 변화량(건)을 확인. 종류별 필터와 이전 기록 표시를 확인.
+6. Windows 권한 오류 등 실제 실패가 발생하면 `확인 불가` 및 실패 이유를 확인하고 그대로 기록. 일부러 권한·방화벽 상태를 변경하거나 공격을 재현하지 않는다.
+7. 화면 검증은 사용자 PC에서 수행해야 완료로 판정 가능. 실제 Windows 실측 숫자/성공 여부를 GitHub 코드만으로 만들어 주장하지 않는다.
