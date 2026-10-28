@@ -1,0 +1,48 @@
+# ARGUS-X 화면 정리 기록 · 0.2.11 유지
+
+## 적용 범위
+- 작업 브랜치: `argus-x-pc-timeline-0211` (새 브랜치를 만들지 않음).
+- 승인된 변경 파일: `student/extension.mjs`, `public/index.html`, `public/app.js`, `public/style.css`, 이 문서.
+- `student/appearance.json`은 현재 브랜치에 없고, 이를 읽는 구현이 확인되지 않아 만들지 않음.
+- 원본 폴더, `main`, 이전 22단계 제출물은 유지. 포장 명령/관리자 권한/방화벽 설정 변경 없음.
+- **실행 방식은 프로젝트 폴더에서 시작**. 설치형 앱에서 `public/*` 변경이 그대로 반영되는지 검증되지 않음.
+
+## 화면 우선순위
+1. 내 보호 상태: 학생 `renderStatus` 첫 부분과 제공 화면의 보호 상태 정보를 우선 확인.
+2. 업무 앱 접속 판정: 기존 업무 앱 탭으로 이동하는 키보드 가능한 바로가기 제공. 성공 판정과 연결 성공을 혼동하지 않음.
+3. 보안 기록 타임라인: 기존 기록 탭, 최신순 기록/종류별 필터/사건 상세 유지.
+
+## 수동 재조회와 오류
+- 기존 `GET /api/pc-status` 및 `GET /api/pc-security`만 사용; 조회 API를 확장하지 않음.
+- 버튼은 “다시 조회”로 표기, 요청 중 “조회 중…” 및 비활성화, 요청 종료 시 다시 활성화. 자동 재시도 없음.
+- 서버/네트워크 실패는 “확인 불가”와 오류 정보, 연결 점검 후 다시 조회할 다음 행동을 표시.
+- 진행 중이거나 전체 조회 실패한 경우 이전 성공 수치를 **과거 기록**으로 표시. 이를 새로운 PC 실측 또는 최신 정상 상태라고 주장하지 않음.
+- 종류별 타임라인 필터와 측정 시각은 기존대로 유지. Windows 로그 경고·오류 건수는 침해/공격 탐지 건수가 아님.
+- SDP는 실제 연결 확인 전 미연결/미확인으로 표시하며 PC 조회 결과와 혼동하지 않음.
+
+## 접근성
+- 실질적인 `<button>`, `<a>`, `<select>`를 유지하여 Tab/Shift+Tab/Enter/Space 조작을 지원.
+- 핵심 바로가기 중 탭 이동은 제공 UI의 기존 탭 클릭/키보드 동작과 연결.
+- `:focus-visible` 윤곽을 명시하여 키보드 초점 구분.
+- 로딩/실패 알림은 기존 `role=status`, `aria-live=polite`로 안내.
+
+## 실제 측정과 예시
+- 이 문서에 새 CPU/메모리/디스크/네트워크/Windows 이벤트 수치를 만들어 기재하지 않음.
+- 화면 데이터는 사용자가 해당 컴퓨터에서 직접 요청한 결과만 실측이라고 표시.
+- `demo`와 미연결 상태는 실측/원천 연결 성공으로 간주하지 않음.
+
+## 프로젝트 폴더에서 검증 순서
+~~~powershell
+git -C "C:\github\ARGUS-X-22-repro" status --short --branch
+git -C "C:\github\ARGUS-X-22-repro" pull --ff-only origin argus-x-pc-timeline-0211
+Set-Location "C:\github\ARGUS-X-22-repro\on-client"
+npm.cmd run check
+node --check .\public\app.js
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\start-alekov.ps1
+~~~
+
+브라우저 `http://127.0.0.1:5189/` 접속. 보호 현황의 핵심 3가지 바로가기 확인 → 키보드 Tab/Enter와 메뉴 화살표 키 확인 → PC 상태/Windows 보안 기록에서 다시 조회와 대기 표시 확인 → 종류별 필터 확인 → 조회 실패일 때 확인 불가/이전 기록 구분/다음 행동 확인. 기존 서버를 실행 중이라면 먼저 해당 창에서 Ctrl+C로 종료 후 다시 실행한다.
+
+## 검증 단계
+- GitHub 정적 코드 확인·문법 수준 검사는 별도 확인.
+- 실제 브라우저, 설치형 앱, 키보드, 조회 실패 및 화면 스크린샷은 **사용자 PC에서 재검증 필요**. 정적 코드 변경만으로 합격을 주장하지 않는다.
