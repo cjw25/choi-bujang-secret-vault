@@ -45,7 +45,25 @@
 
       <section id="view-protection" class="view" role="tabpanel" aria-labelledby="tab-protection">
         <h1>보호 현황</h1>
-        <section class="core-first" aria-label="핵심 기능 바로가기"><h2>핵심 기능 3가지</h2><nav class="core-shortcuts" aria-label="핵심 기능"><a href="#student-identity-title">1. 내 보호 상태</a><a href="#tab-apps" data-core-tab="apps">2. 업무 앱 접속 판정</a><a href="#tab-records" data-core-tab="records">3. 보안 기록 타임라인</a></nav><p class="muted">현재 연결과 조회 결과를 각각 확인하세요. 예제 자료는 실제 측정값이 아닙니다.</p></section>
+        <section class="core-first" aria-labelledby="day1-check-title">
+          <h2 id="day1-check-title">1일차 기능 점검표 <span class="tag">실행 상태 · 설명용 예시 아님</span></h2>
+          <p class="muted">상태는 실제 요청 결과와 연결 모드를 기준으로 표시합니다. 조회 전·실패·예제는 성공으로 표시하지 않습니다.</p>
+          <div class="core-shortcuts" aria-label="1일차 핵심 기능">
+            <div class="core-check-item">
+              <a href="#tab-records" data-core-tab="records">1. 기록 보기</a>
+              <p id="day1-record-status" role="status" aria-live="polite">조회 결과 확인 중…</p>
+            </div>
+            <div class="core-check-item">
+              <a href="#pc-status-title">2. 내 PC 상태</a>
+              <p id="day1-pc-status" role="status" aria-live="polite">조회 전 · 현재 확인 불가</p>
+            </div>
+            <div class="core-check-item">
+              <a href="#student-status-title">3. 위험 알림</a>
+              <p id="day1-alert-status" role="status" aria-live="polite">실제 위험 알림 연동 검증 전</p>
+            </div>
+          </div>
+          <p class="muted">다듬을 순서: 기록 보기 → 내 PC 상태 → 위험 알림</p>
+        </section>
 
         <div class="grid-2">
           <section class="card provided" aria-labelledby="identity-title">
