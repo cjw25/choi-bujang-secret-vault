@@ -19,9 +19,10 @@ export function createStudentView() {
       };
 
       const modeNames = {
-        demo: '예제 자료',
-        disconnected: '연결 없음',
-        unknown: '확인 불가'
+        connected: '원천 연결 모드(connected) · 각 조회 결과는 별도로 확인하세요.',
+        demo: '예제 자료(demo) · 실제 원천 조회 결과가 아닙니다.',
+        disconnected: '연결 없음(disconnected) · 실제 사용자 정보 미확인',
+        unknown: '출처 확인 불가(unknown) · 실제 원천 연결로 간주하지 않습니다.'
       };
 
       const value = (item) =>
@@ -44,6 +45,14 @@ export function createStudentView() {
 
         if (Object.hasOwn(modeNames, resource?.mode)) {
           line(part, modeNames[resource.mode]);
+        } else {
+          line(part, resource?.status === 'loading'
+            ? '자료 출처: 조회 중(미확정)'
+            : '자료 출처 확인 불가 · 실제 조회로 간주하지 않습니다.');
+        }
+
+        if (resource?.status === 'ok' && !['connected', 'demo'].includes(resource?.mode)) {
+          line(part, '조회 성공 상태만으로 원천 연결이 확인된 것은 아닙니다.');
         }
 
         if (resource?.status === 'loading') {
@@ -52,6 +61,10 @@ export function createStudentView() {
           const message = value(resource.error?.message);
           const unverifiable = ['CONTRACT_MISMATCH', 'ENGINE_RESULT_UNVERIFIED'].includes(resource.error?.code);
           line(part, `${unverifiable ? '확인 불가' : '연결 실패'}: ${message}`);
+          if (typeof resource.error?.code === 'string' && /^[A-Z][A-Z0-9_]{1,63}$/.test(resource.error.code)) {
+            line(part, `오류 코드: ${resource.error.code}`);
+          }
+          line(part, '이전 사용자·기기·세션 정보는 현재 결과로 재사용하지 않습니다.');
         } else if (resource?.status === 'ok') {
           showData(part, resource.data);
         } else {
@@ -471,6 +484,10 @@ export function createStudentView() {
           line(part, '예제 데이터(demo) · 실제 연결 아님');
         } else if (resource?.mode === 'disconnected') {
           line(part, '서버 연결 없음(disconnected)');
+        } else if (resource?.mode === 'connected') {
+          line(part, '원천 연결 모드(connected) · 실제 조회 성공 여부는 아래 상태 기준');
+        } else {
+          line(part, resource?.status === 'loading' ? '출처 조회 중(미확정)' : '자료 출처 확인 불가');
         }
 
         if (resource?.status === 'idle') {
@@ -498,6 +515,12 @@ export function createStudentView() {
 
       if (mode === 'demo') {
         line(root, '전체 데이터 상태: 예제(demo)');
+      } else if (mode === 'disconnected') {
+        line(root, '전체 데이터 상태: 원천 연결 없음(disconnected) · 보안 정상 여부를 판단할 수 없습니다.');
+      } else if (mode === 'connected') {
+        line(root, '전체 데이터 상태: 연결 모드(connected) · 각 조회의 성공 여부는 별도 확인');
+      } else {
+        line(root, '전체 데이터 상태: 확인 불가 · 실제 연결 성공으로 간주하지 않습니다.');
       }
 
       section(
@@ -526,7 +549,7 @@ export function createStudentView() {
       if (!Array.isArray(notifications)) {
         line(notices, '알림 자료 형식 확인 불가');
       } else if (notifications.length === 0) {
-        line(notices, '주의할 알림이 없습니다.');
+        line(notices, '현재 전달된 알림이 없습니다. 전체 위험 없음 또는 XDR 정상 상태를 뜻하지 않습니다.');
       } else {
         for (const notification of notifications) {
           line(
@@ -581,6 +604,7 @@ export function createStudentView() {
           diagnosticLines.push(entry);
           line(diag, entry);
         }
+        line(diag, '진단의 checkedAt은 서버가 전달한 값이며 PC에서 직접 측정한 시간이 아닙니다.');
       } else {
         line(diag, '진단 정보 상태 확인 불가');
       }
@@ -772,6 +796,14 @@ export function createStudentView() {
 
       if (mode === 'demo') {
         line('예제 응답(demo) · 실제 AI 연결 성공이 아닙니다.');
+      } else if (mode === 'disconnected') {
+        line('AI 자료 출처: 연결 없음(disconnected) · 실제 모델 점검 성공이 아닙니다.');
+      } else if (mode === 'connected') {
+        line('AI 자료 출처: 연결 모드(connected) · 모델 응답 성공은 점검 결과로 별도 확인');
+      } else if (status === 'idle' || status === 'loading') {
+        line('AI 자료 출처: 점검 전 또는 점검 중 · 미확정');
+      } else {
+        line('AI 자료 출처 확인 불가 · 실제 모델 연결 성공으로 간주하지 않습니다.');
       }
 
       if (status === 'idle') {
@@ -787,7 +819,9 @@ export function createStudentView() {
           line('시험 연결 점검(test)');
           line('실제 앱 이용 권한이 확인된 상태는 아닙니다.');
         } else if (auth === 'verified') {
-          line('앱 권한 확인 후 점검(verified)');
+          line(mode === 'demo'
+            ? '예제 권한 표시(verified) · 실제 앱 이용 권한 확인 아님'
+            : '앱 권한 확인 후 점검(verified)');
         } else {
           line('AI 권한 확인 불가');
         }
@@ -804,6 +838,9 @@ export function createStudentView() {
             : '확인 불가'
         }`);
 
+        line(mode === 'demo'
+          ? '위 modelCount와 checkedAt은 설명용 예제 값이며 실제 모델 조회·PC 실측 결과가 아닙니다.'
+          : 'checkedAt은 서버가 전달한 확인 시각이며 PC에서 직접 측정한 처리 시간이 아닙니다.');
         line('사건 설명은 아직 실행하지 않았습니다.');
         line('실제 사건 설명은 보안 기록에서 별도로 요청하고 확인해야 합니다.');
       } else if (status === 'error') {
