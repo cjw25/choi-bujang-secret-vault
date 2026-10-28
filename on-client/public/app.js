@@ -1328,8 +1328,98 @@ async function loadAll() {
   }
 }
 
+// ---------- 내 PC 상태 (실측만, 임시 기록 타임라인) ----------
+const pcMetrics = Object.freeze({cpu:{name:'CPU 사용률',unit:'%',delta:'%p'},memory:{name:'메모리 사용량',unit:'GiB',delta:'GiB'},disk:{name:'디스크 여유 공간',unit:'GiB',delta:'GiB'}});
+const pcHistory = [];
+const pcLatest = new Map();
+let pcLoading = false;
+function safePcMetric(row) {
+  if (!row || !Object.hasOwn(pcMetrics,row.kind) || !['ok','error'].includes(row.status)) return null;
+  if (typeof row.measuredAt !== 'string' || !Number.isFinite(Date.parse(row.measuredAt)))return null;
+  const config=pcMetrics[row.kind];
+  if (row.unit !== config.unit)return null;
+  if (row.status === 'ok') {
+    if (typeof row.value !== 'number' || !Number.isFinite(row.value) || row.value < 0 ||
+        (row.kind==='cpu' && row.value>100) || typeof row.detail !== 'string')return null;
+    return {kind:row.kind,status:'ok',value:row.value,unit:row.unit,measuredAt:row.measuredAt,detail:row.detail};
+  }
+  if (typeof row.reason !== 'string' || !row.reason || row.reason.length>250)return null;
+  return {kind:row.kind,status:'error',unit:row.unit,measuredAt:row.measuredAt,reason:row.reason};
+}
+function renderPcHistory(){
+  const filter=$('pc-status-filter').value;
+  const history=pcHistory.filter(row=>filter==='all'||row.kind===filter);
+  const ul=$('pc-status-timeline');
+  if(history.length===0){
+    setChildren(ul,el('li',{className:'muted',text:'조회 기록 없음 · 숫자는 아직 확인되지 않았습니다.'}));
+    return;
+  }
+  setChildren(ul,...history.map(row=>{
+    const info=pcMetrics[row.kind];
+    const title=info.name+' · '+formatTime(row.measuredAt)+' (KST, 브라우저 지역 설정 기준)';
+    const main=row.status==='ok'?('실측: '+row.value+' '+row.unit):('확인 불가: '+row.reason);
+    const change=row.status==='ok' && row.previous!==null
+      ? '직전 성공 조회 대비: '+(row.value-row.previous>=0?'+':'')+
+        Number((row.value-row.previous).toFixed(2))+' '+info.delta : '비교 불가 · 같은 종류의 성공 조회 2회 필요';
+    return el('li',{className:'pc-status-entry'},[
+      el('strong',{text:title}),
+      el('p',{text:main}),
+      el('p',{className:'muted',text:row.status==='ok'?change:'읽기 실패로 이전 성공값과 비교하지 않습니다.'}),
+      el('p',{className:'muted',text:row.status==='ok'?row.detail:'일반 사용자 권한으로 읽을 수 있는 방법만 사용합니다.'})
+    ]);
+  }));
+}
+function renderPcSummary(){
+  setChildren($('pc-status-summary'),...Object.entries(pcMetrics).map(([kind,info])=>{
+    const row=pcLatest.get(kind);
+    return el('p',{text:info.name+' · '+(row ? row.status==='ok'?row.value+' '+row.unit:'확인 불가 · '+row.reason : '확인 불가 · 아직 조회하지 않았습니다.')
+      +' · 측정 시각: '+(row?formatTime(row.measuredAt):'미측정')});
+  }));
+}
+async function loadPcStatus(){
+  if(pcLoading)return;
+  pcLoading=true;
+  $('pc-status-load').disabled=true;
+  $('pc-status-message').textContent='로컬 PC 측정 중 · 이전 값은 새로운 실측값이 아닙니다.';
+  try{
+    const response=await request('/api/pc-status');
+    if(!response.ok){
+      $('pc-status-message').textContent='확인 불가 · '+response.error.message+' ('+response.error.code+')';
+      return;
+    }
+    if(response.data?.source!=='local-node-os'||!Array.isArray(response.data.metrics)||
+      response.data.metrics.length!==3||new Set(response.data.metrics.map(x=>x?.kind)).size!==3){
+      $('pc-status-message').textContent='확인 불가 · 측정 응답 형식이 올바르지 않습니다.';
+      return;
+    }
+    const rows=response.data.metrics.map(safePcMetric);
+    if(rows.some(x=>!x)){
+      $('pc-status-message').textContent='확인 불가 · 측정값·단위·시각을 검증하지 못했습니다.';
+      return;
+    }
+    for(const row of rows){
+      const prior=pcLatest.get(row.kind);
+      row.previous=row.status==='ok' && prior?.status==='ok'?prior.value:null;
+      pcLatest.set(row.kind,row);
+      pcHistory.unshift(row);
+    }
+    if(pcHistory.length>60)pcHistory.length=60;
+    const ok=rows.filter(x=>x.status==='ok').length;
+    $('pc-status-message').textContent='실제 로컬 PC 조회 '+ok+'/3종 성공 · 실패 항목은 확인 불가로 표시 · 자동 전송/저장 없음';
+    renderPcSummary();
+    renderPcHistory();
+  }finally{
+    pcLoading=false;
+    $('pc-status-load').disabled=false;
+  }
+}
+
 function init() {
   setupNav();
+  renderPcSummary();
+  renderPcHistory();
+  $('pc-status-filter').addEventListener('change',renderPcHistory);
+  $('pc-status-load').addEventListener('click',()=>loadPcStatus());
   $('refresh').addEventListener('click', () => loadAll());
   $('diag-load').addEventListener('click', () => loadDiagnostics());
   $('diag-copy').addEventListener('click', () => copyDiagnostics());
