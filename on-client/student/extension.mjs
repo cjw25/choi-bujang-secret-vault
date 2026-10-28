@@ -1,6 +1,99 @@
 // 이 파일은 학생이 같은 프로젝트에서 이어서 구현합니다.
 // 제공 UI를 받은 것만으로 단계 완료를 인정하지 않습니다.
-export function createStudentView() {
+export function createStudentView({ api } = {}) {
+  // 4일차: 제공 UI·서버 상태를 변경하지 않는 학생 영역 전용 기록 재조회 상태.
+  // 학생용 허용 API(/api/events)만 호출하며 OS 측정값과 SDP 연결 여부는 추정하지 않는다.
+  let studentRecordCheck = { phase: 'idle' };
+  let studentRecordUi = null;
+  const safeRecordError = raw => {
+    if (typeof raw !== 'string' || !raw.trim()) return '서버가 구체적인 원인을 제공하지 않았습니다.';
+    const text = raw.trim().slice(0, 240);
+    return /Bearer\s+\S+|sk-(?:proj-|ant-)?[A-Za-z0-9_-]{8,}|(?:api[_ -]?key|authorization|password|secret|token|비밀번호|토큰)\s*[:=]\s*\S+/i.test(text)
+      ? '민감 정보가 포함될 수 있어 원문을 표시하지 않습니다.' : text;
+  };
+  const validRecordCode = raw => typeof raw === 'string' && /^[A-Z][A-Z0-9_]{0,63}$/.test(raw) ? raw : 'UNVERIFIED';
+  const recordNextStep = code =>
+    code === 'TIMEOUT' || code === 'ENGINE_TIMEOUT' || code === 'REQUEST_TIMEOUT'
+      ? '다음: 로컬 서버의 응답 상태를 확인하고 잠시 후 다시 조회를 누르세요.'
+      : code === 'ACCESS_DENIED' || code === 'SUBJECT_SCOPE_UNVERIFIED'
+        ? '다음: 권한을 임의로 변경하지 말고 본인 조회 범위와 담당자 승인 상태를 확인하세요.'
+        : code === 'ENGINE_NOT_CONNECTED' || code === 'NETWORK_ERROR'
+          ? '다음: 로컬 앱 서버와 기존 SDP 연결 어댑터의 상태를 확인한 뒤 다시 조회를 누르세요.'
+          : code === 'INVALID_RESPONSE' || code === 'SOURCE_UNVERIFIED'
+            ? '다음: 서버 응답 형식과 실제 원천 연결 상태를 확인한 후 다시 조회를 누르세요.'
+            : '다음: 오류 코드를 확인하고 로컬 서버 또는 연결 상태를 점검한 뒤 다시 조회를 누르세요.';
+  const displayRecordTime = raw =>
+    typeof raw === 'string' && Number.isFinite(Date.parse(raw))
+      ? new Date(raw).toLocaleString('ko-KR') : '확인 불가(서버 조회 시각 없음)';
+  const repaintStudentRecord = () => {
+    if (!studentRecordUi) return;
+    const { button, output, recordValue, recordNote, alertValue, alertNote, sourceEvents } = studentRecordUi;
+    const state = studentRecordCheck;
+    button.disabled = state.phase === 'loading';
+    button.textContent = state.phase === 'loading' ? '새로 읽는 중…' : '기록 다시 조회';
+    button.setAttribute('aria-busy', state.phase === 'loading' ? 'true' : 'false');
+    output.setAttribute('role', state.phase === 'error' ? 'alert' : 'status');
+    if (state.phase === 'loading') {
+      output.textContent = '보안 기록을 새로 읽는 중… · 이전 성공 수치는 현재 결과가 아닙니다.';
+      recordValue.textContent = '조회 중';
+      recordNote.textContent = '학생 영역에서 실제 보안 기록을 다시 읽는 중입니다.';
+      alertValue.textContent = '확인 불가';
+      alertNote.textContent = '기록 조회 중 · XDR 건수와 실제 알림 전송 여부 미확인';
+    } else if (state.phase === 'error') {
+      output.textContent = '보안 기록 조회 실패 · ' + state.message + ' (오류 코드: ' + state.code + '). ' + recordNextStep(state.code);
+      recordValue.textContent = '확인 불가';
+      recordNote.textContent = '학생 영역 재조회 실패 · 실패 항목: 보안 기록 · ' + state.code;
+      alertValue.textContent = '확인 불가';
+      alertNote.textContent = '보안 기록 조회 실패 · 위험 없음이나 공격 탐지로 판단하지 않습니다.';
+    } else if (state.phase === 'ok') {
+      const isDemo = state.mode === 'demo';
+      output.textContent = (isDemo ? '예제 보안 기록' : '연결된 원천 보안 기록') + ' ' + state.count + '건 새로 조회됨 · 서버 확인 시각: ' + displayRecordTime(state.checkedAt) + (isDemo ? ' · 실제 기록 아님' : ' · 실제 원천 조회 결과') + ' · 자동 전송/저장 없음';
+      recordValue.textContent = (isDemo ? '예제 ' : '') + state.count + '건';
+      recordNote.textContent = '학생 재조회 ' + (isDemo ? 'demo · 실제 기록 아님' : 'connected · 원천 연결 모드') + ' · 시각: ' + displayRecordTime(state.checkedAt);
+      alertValue.textContent = (isDemo ? '예제 XDR ' : 'XDR 기록 ') + state.xdr + '건';
+      alertNote.textContent = (isDemo ? '예시 자료 · 실제 탐지 아님' : '현재 조회 범위의 XDR 기록 · 알림 전송 기능은 검증 전');
+    } else {
+      const connected = sourceEvents?.status === 'ok' && sourceEvents.mode === 'connected' && Array.isArray(sourceEvents.data);
+      const demo = sourceEvents?.status === 'ok' && sourceEvents.mode === 'demo' && Array.isArray(sourceEvents.data);
+      const loading = sourceEvents?.status === 'loading';
+      const errored = sourceEvents?.status === 'error';
+      recordValue.textContent = connected ? sourceEvents.data.length + '건' : demo ? '예제 ' + sourceEvents.data.length + '건' : loading ? '조회 중' : '확인 불가';
+      recordNote.textContent = connected ? '공통 화면이 전달한 연결된 기록 · 학생 재조회 전'
+        : demo ? '공통 화면 예제(demo) · 실제 기록 아님'
+          : errored ? '공통 화면 기록 조회 실패 · ' + validRecordCode(sourceEvents.error?.code)
+            : loading ? '공통 화면에서 새로 읽는 중' : '실제 기록 조회 결과 미확인';
+      alertValue.textContent = connected ? 'XDR 기록 ' + sourceEvents.data.filter(x => x?.kind === 'xdr').length + '건'
+        : demo ? '예제 XDR ' + sourceEvents.data.filter(x => x?.kind === 'xdr').length + '건' : '확인 불가';
+      alertNote.textContent = connected ? '공통 화면 조회 범위 내 XDR 기록 · 알림 전송 미검증'
+        : demo ? '예제 자료 · 실제 위험 알림 아님' : '실제 XDR 알림 연동 미검증';
+      output.textContent = '학생 영역 기록 재조회 전 · 위의 기록 다시 조회 버튼으로 실제 값을 새로 요청합니다.';
+    }
+  };
+  const reloadStudentRecords = async () => {
+    if (studentRecordCheck.phase === 'loading') return;
+    studentRecordCheck = { phase: 'loading' };
+    repaintStudentRecord();
+    try {
+      const result = typeof api?.get === 'function'
+        ? await api.get('/api/events')
+        : { ok: false, error: { code: 'STUDENT_API_UNAVAILABLE', message: '학생 조회 API를 사용할 수 없습니다.' } };
+      if (!result?.ok) {
+        studentRecordCheck = { phase: 'error', code: validRecordCode(result?.error?.code), message: safeRecordError(result?.error?.message) };
+      } else if (!['connected','demo'].includes(result.meta?.mode)) {
+        studentRecordCheck = { phase: 'error', code: 'SOURCE_UNVERIFIED', message: '서버 응답의 원천 연결 상태를 검증하지 못했습니다.' };
+      } else if (!Array.isArray(result.data) || result.data.length > 500 ||
+        result.data.some(row => !row || !['access','xdr'].includes(row.kind) || typeof row.id !== 'string' ||
+          typeof row.at !== 'string' || !Number.isFinite(Date.parse(row.at)))) {
+        studentRecordCheck = { phase: 'error', code: 'INVALID_RESPONSE', message: '보안 기록 목록 또는 기록 시각의 형식이 올바르지 않습니다.' };
+      } else {
+        studentRecordCheck = { phase: 'ok', mode: result.meta.mode, count: result.data.length,
+          xdr: result.data.filter(row => row.kind === 'xdr').length, checkedAt: result.meta.checkedAt };
+      }
+    } catch {
+      studentRecordCheck = { phase: 'error', code: 'QUERY_FAILED', message: '로컬 기록 조회 요청을 완료하지 못했습니다.' };
+    }
+    repaintStudentRecord();
+  };
   return {
     renderIdentity({ me, devices, sessions }) {
       const root = document.createElement('div');
@@ -432,37 +525,88 @@ export function createStudentView() {
     },
     renderStatus({ devices, sessions, notifications, diagnostics, mode, events }) {
       const root = document.createElement('div');
-      // 학생 영역은 상태를 보여줄 뿐, PC 실측 API를 호출하거나 임의 수치를 생성하지 않는다.
+      // 4일차 학생 영역 우선 표시: 기록 → PC 실측 경로 → XDR 구분 → 학생 재조회 상태.
+      // 상단 4개 상태 카드는 이 학생 영역에만 적용되며 제공 공통 화면은 건드리지 않는다.
       const overview = document.createElement('section');
       overview.className = 'student-core-overview';
+      overview.style.margin = '0 0 16px';
+      overview.style.padding = '16px';
+      overview.style.border = '1px solid #d9dde3';
+      overview.style.borderRadius = '10px';
       const overviewTitle = document.createElement('h3');
-      overviewTitle.textContent = '1일차 핵심 기능 점검 · 기록 → PC → 위험 알림';
+      overviewTitle.textContent = '4일차 핵심 기능 · 기록 보기 → 내 PC 상태 → 위험 알림';
+      overviewTitle.style.fontSize = '1.2rem';
+      overviewTitle.style.margin = '0 0 6px';
       overview.appendChild(overviewTitle);
-      const priorities = document.createElement('ol');
-      const item = (heading, description) => {
-        const li = document.createElement('li');
-        const strong = document.createElement('strong');
-        strong.textContent = heading;
-        const p = document.createElement('p');
-        p.textContent = description;
-        li.append(strong, p);
-        priorities.appendChild(li);
+      const scope = document.createElement('p');
+      scope.textContent = '학생 구현 화면 · 기록 재조회는 허용된 /api/events만 사용합니다. PC 실측은 위쪽 기존 PC 상태 화면에서 별도로 조회하며 SDP 연결 성공과 혼동하지 않습니다.';
+      scope.style.fontSize = '0.9rem';
+      overview.appendChild(scope);
+      const cards = document.createElement('div');
+      cards.style.display = 'grid';
+      cards.style.gridTemplateColumns = 'repeat(auto-fit, minmax(min(100%, 185px), 1fr))';
+      cards.style.gap = '12px';
+      cards.style.margin = '12px 0';
+      const makeCard = (title, kind) => {
+        const card = document.createElement('article');
+        card.style.border = '1px solid #d9dde3';
+        card.style.borderTop = '3px solid #6b3fb3';
+        card.style.borderRadius = '8px';
+        card.style.padding = '12px';
+        card.style.minWidth = '0';
+        const heading = document.createElement('h4');
+        heading.textContent = title;
+        heading.style.fontSize = '0.95rem';
+        heading.style.margin = '0 0 7px';
+        const metric = document.createElement('p');
+        metric.style.fontSize = '1.25rem';
+        metric.style.fontWeight = '700';
+        metric.style.margin = '0 0 8px';
+        metric.style.overflowWrap = 'anywhere';
+        const note = document.createElement('p');
+        note.style.fontSize = '0.85rem';
+        note.style.margin = '0';
+        note.style.overflowWrap = 'anywhere';
+        card.append(heading, metric, note);
+        cards.appendChild(card);
+        return { card, metric, note };
       };
-      const eventsConnected = events?.status === 'ok' && events?.mode === 'connected' && Array.isArray(events.data);
-      const eventsDemo = events?.status === 'ok' && events?.mode === 'demo';
-      item('1. 기록 보기', eventsConnected
-        ? '실제 본인 기록 ' + events.data.length + '건 조회됨 · 보안 기록 메뉴에서 종류별 필터 확인'
-        : eventsDemo ? '예제 기록만 조회됨 · 실제 기록 아님'
-        : events?.status === 'loading' ? '기록 조회 중 · 결과 미확인'
-        : events?.status === 'error' ? '기록 화면은 구현됨 · 원천 조회 실패, 연결 어댑터 확인 필요'
-        : '기록 화면은 구현됨 · 현재 원천 조회 미확인');
-      item('2. 내 PC 상태', '상단 내 PC 상태에서 다시 조회 후 실측 결과 확인 · 이 학생 영역에는 PC 측정값을 전달받지 않으므로 임의 수치를 표시하지 않습니다.');
-      item('3. 위험 알림', eventsConnected
-        ? '현재 본인 기록 범위의 XDR 경보 ' + events.data.filter(row => row.kind === 'xdr').length + '건 · 알림 전달 기능은 검증 전'
-        : '실제 위험 알림 연동 미검증 · 원천 연결과 XDR 기록 조회 상태 확인 필요');
-      overview.appendChild(priorities);
+      const recordCard = makeCard('1. 기록 보기');
+      const pcCard = makeCard('2. 내 PC 상태');
+      pcCard.metric.textContent = '별도 조회';
+      pcCard.note.textContent = '위쪽 PC 상태 다시 조회로 실제 CPU·메모리·디스크 및 측정 시각 확인 · 학생 영역에서 값을 추정하지 않음';
+      const xdrCard = makeCard('3. 위험 알림');
+      const refreshCard = makeCard('4. 기록 재조회 상태');
+      const reloadButton = document.createElement('button');
+      reloadButton.type = 'button';
+      reloadButton.textContent = '기록 다시 조회';
+      reloadButton.style.font = 'inherit';
+      reloadButton.style.padding = '10px 14px';
+      reloadButton.style.border = '2px solid #2357c6';
+      reloadButton.style.borderRadius = '8px';
+      reloadButton.style.background = '#ffffff';
+      reloadButton.style.color = '#1c2430';
+      reloadButton.style.cursor = 'pointer';
+      reloadButton.style.minHeight = '44px';
+      reloadButton.setAttribute('aria-label','학생 영역 보안 기록 다시 조회');
+      reloadButton.addEventListener('click', reloadStudentRecords);
+      const reloadOutput = document.createElement('p');
+      reloadOutput.style.padding = '10px 12px';
+      reloadOutput.style.margin = '10px 0 0';
+      reloadOutput.style.borderLeft = '3px solid #6b3fb3';
+      reloadOutput.style.overflowWrap = 'anywhere';
+      reloadOutput.setAttribute('aria-live', 'polite');
+      overview.append(cards, reloadButton, reloadOutput);
       root.appendChild(overview);
-
+      studentRecordUi = { button: reloadButton, output: reloadOutput,
+        recordValue: recordCard.metric, recordNote: recordCard.note,
+        alertValue: xdrCard.metric, alertNote: xdrCard.note,
+        sourceEvents: events };
+      refreshCard.metric.textContent = studentRecordCheck.phase === 'loading' ? '읽는 중'
+        : studentRecordCheck.phase === 'error' ? '조회 실패'
+          : studentRecordCheck.phase === 'ok' ? '조회 완료' : '조회 전';
+      refreshCard.note.textContent = '실제 성공·오류는 아래에 표시 · PC/SDP 연결 상태와 별개';
+      repaintStudentRecord();
       const line = (parent, message) => {
         const p = document.createElement('p');
         p.textContent = message;
