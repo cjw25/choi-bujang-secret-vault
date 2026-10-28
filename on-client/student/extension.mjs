@@ -432,6 +432,37 @@ export function createStudentView() {
     },
     renderStatus({ devices, sessions, notifications, diagnostics, mode }) {
       const root = document.createElement('div');
+      // 학생 표시 영역만으로 동작하는 첫 화면 요약. 원천이 준 값 외 숫자를 만들지 않는다.
+      const overview = document.createElement('section');
+      overview.className = 'student-core-overview';
+      const overviewTitle = document.createElement('h3');
+      overviewTitle.textContent = '먼저 확인할 핵심 기능 3가지';
+      overview.appendChild(overviewTitle);
+      const priorities = document.createElement('ol');
+      const item = (heading, description) => {
+        const li = document.createElement('li');
+        const strong = document.createElement('strong');
+        strong.textContent = heading;
+        const p = document.createElement('p');
+        p.textContent = description;
+        li.append(strong, p);
+        priorities.appendChild(li);
+      };
+      const disconnected = mode === 'disconnected';
+      const demo = mode === 'demo';
+      const deviceState = devices?.status === 'ok' && Array.isArray(devices.data)
+        ? '조회된 기기 ' + devices.data.length + '개 (현재 기기 안전 판정 아님)'
+        : devices?.status === 'loading' ? '기기 조회 중'
+        : '기기 확인 불가 · 연결 및 조회 상태 확인 필요';
+      const sessionState = sessions?.status === 'ok' && Array.isArray(sessions.data)
+        ? '조회된 세션 ' + sessions.data.length + '개 (현재 연결 범위만)'
+        : sessions?.status === 'loading' ? '세션 조회 중'
+        : '세션 확인 불가 · 연결 및 조회 상태 확인 필요';
+      item('1. 내 보호 상태', (demo ? '예제 자료 · 실측 아님. ' : disconnected ? 'SDP 미연결 · ' : '') + deviceState + ' / ' + sessionState);
+      item('2. 업무 앱 접속 판정', '업무 앱 메뉴에서 직접 요청합니다. 조회 실패는 접속 거부가 아니며, 현재 판정값은 이 요약에서 확인하지 않습니다.');
+      item('3. 보안 기록 타임라인', '보안 기록 메뉴에서 최신순 기록과 종류별 필터를 확인합니다. 기록 부재는 공격 부재의 증거가 아닙니다.');
+      overview.appendChild(priorities);
+      root.appendChild(overview);
 
       const line = (parent, message) => {
         const p = document.createElement('p');
@@ -471,7 +502,11 @@ export function createStudentView() {
 
         line(parent, `${name} 조회 실패${timedOut ? ' (시간 초과)' : ''}: ${message}`);
         line(parent, `오류 코드: ${code}`);
-        line(parent, '다시 시도는 위쪽 다시 불러오기 버튼을 직접 누르세요.');
+        line(parent, timedOut
+          ? '다음: 로컬 서버가 실행 중인지 확인하고 위쪽 다시 불러오기 버튼을 직접 누르세요.'
+          : code === 'ACCESS_DENIED'
+            ? '다음: 권한을 변경하지 말고 확인 불가로 유지한 뒤 담당자에게 조회 권한을 확인하세요.'
+            : '다음: 연결 상태를 확인하고 위쪽 다시 불러오기 버튼을 직접 누르세요.');
       };
 
       const section = (title, resource, emptyMessage, describe, names) => {
