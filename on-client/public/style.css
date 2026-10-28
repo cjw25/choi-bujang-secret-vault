@@ -217,3 +217,10 @@ main:focus { outline: none; }
 .pc-status-entry { border-left: 3px solid var(--accent); background: var(--bg); border-radius: var(--radius); padding: 10px 12px; overflow-wrap: anywhere; }
 .pc-status-entry p { margin: 5px 0 0; }
 .pc-status-entry strong { font-size: 0.9rem; }
+
+/* Windows 네트워크·방화벽·이벤트 요약: 기존 XDR 사건과 독립 */
+.pc-security-card { border-left: 4px solid var(--student); }
+.pc-security-card .row { align-items: center; margin-bottom: 10px; }
+.pc-security-disclaimer { border-left: 3px solid var(--challenge); background: var(--challenge-soft); padding: 10px 12px; border-radius: var(--radius); }
+#pc-security-sdp { font-weight: 600; background: var(--unknown-soft); padding: 8px 10px; border-radius: var(--radius); }
+#pc-security-timeline p { overflow-wrap: anywhere; }
