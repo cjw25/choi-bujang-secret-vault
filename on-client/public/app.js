@@ -1214,17 +1214,18 @@ function studentData(kind) {
     return { ...snapshot(access), appId: access.appId ?? null };
   }
   if (kind === 'status') {
-    const notifications = [...state.errors].map(([resource, message]) => ({ resource, code: state[resource]?.error?.code || 'UNVERIFIED', message }));
+    const notifications = [...state.errors].map(([resource, message]) => ({ resource, category: 'lookup-error', code: state[resource]?.error?.code || 'UNVERIFIED', message }));
     if (state.devices.status === 'ok') for (const device of state.devices.data) {
-      if (device.status !== 'compliant') notifications.push({ resource: 'devices', code: device.status, message: `${device.label || device.id}: ${stateLabel('device', device.status)}` });
+      if (device.status !== 'compliant') notifications.push({ resource: 'devices', category: 'state-warning', code: device.status, message: `${device.label || device.id}: ${stateLabel('device', device.status)}` });
     }
     if (state.sessions.status === 'ok') for (const session of state.sessions.data) {
-      if (session.status !== 'active') notifications.push({ resource: 'sessions', code: session.status, message: `${session.id}: ${stateLabel('session', session.status)}` });
+      if (session.status !== 'active') notifications.push({ resource: 'sessions', category: 'state-warning', code: session.status, message: `${session.id}: ${stateLabel('session', session.status)}` });
     }
     if (state.events.status === 'ok') for (const event of state.events.data) {
-      if (event.kind === 'xdr' || Object.values(event.state).includes('unknown')) notifications.push({ resource: 'events', code: event.kind, message: `${event.id}: ${event.summary}` });
+      if (event.kind === 'xdr') notifications.push({ resource: 'events', category: 'xdr-event', code: event.kind, message: `${event.id}: ${event.summary}` });
+      else if (Object.values(event.state).includes('unknown')) notifications.push({ resource: 'events', category: 'state-warning', code: 'unknown', message: `${event.id}: ${event.summary}` });
     }
-    return structuredClone({ devices: snapshot(state.devices), sessions: snapshot(state.sessions), notifications, diagnostics: snapshot(state.diagnostics), mode: currentMode() });
+    return structuredClone({ devices: snapshot(state.devices), sessions: snapshot(state.sessions), events: snapshot(state.events), notifications, diagnostics: snapshot(state.diagnostics), mode: currentMode() });
   }
   return snapshot(state.events);
 }
