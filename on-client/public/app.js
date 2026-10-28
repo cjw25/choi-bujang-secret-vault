@@ -1417,8 +1417,92 @@ async function loadPcStatus(){
   }
 }
 
+// ---------- Windows 네트워크/방화벽/진단 기록 (별도 읽기 전용 타임라인) ----------
+const securityLabels={network:'네트워크 구성',firewall:'Windows 방화벽',system:'System 로그',application:'Application 로그'};
+const securityErrorLabels={ACCESS_DENIED:'일반 사용자에게 읽기 권한이 없습니다.',COMMAND_UNAVAILABLE:'Windows 조회 명령을 사용할 수 없습니다.',QUERY_FAILED:'Windows 조회 요청이 실패했습니다.',QUERY_LIMIT:'최근 24시간 로그가 조회 상한을 초과했습니다.',PROCESS_TIMEOUT:'조회 시간이 초과됐습니다.',POWERSHELL_UNAVAILABLE:'PowerShell 실행 파일을 사용할 수 없습니다.',PROCESS_FAILED:'조회 프로세스에 오류가 발생했습니다.',INVALID_OUTPUT:'응답 형식을 검증하지 못했습니다.',WINDOWS_ONLY:'Windows에서만 조회할 수 있습니다.',CANCELLED:'요청이 취소됐습니다.'};
+const securityHistory=[],securityLatest=new Map();
+let securityLoading=false;
+function validateSecurityRecord(v){
+  if(!v||!Object.hasOwn(securityLabels,v.kind)||!['ok','error'].includes(v.status)||v.source!=='windows-powershell-readonly'||typeof v.checkedAt!=='string'||!Number.isFinite(Date.parse(v.checkedAt)))return null;
+  if(v.status==='error')return {...v,data:null,errorCode:Object.hasOwn(securityErrorLabels,v.errorCode)?v.errorCode:'INVALID_OUTPUT'};
+  if(!v.data||typeof v.data!=='object')return null;
+  if(v.kind==='network'&&(!Array.isArray(v.data.adapters)||v.data.adapters.length>12))return null;
+  if(v.kind==='firewall'&&(!Array.isArray(v.data.profiles)||v.data.profiles.length>8))return null;
+  if(['system','application'].includes(v.kind)&&(!Number.isSafeInteger(v.data.warning)||!Number.isSafeInteger(v.data.error)||v.data.warning<0||v.data.error<0||!Number.isFinite(Date.parse(v.data.windowStart))||!Number.isFinite(Date.parse(v.data.windowEnd))))return null;
+  return v;
+}
+function securityDescription(record){
+  if(record.status==='error')return '확인 불가 · '+securityErrorLabels[record.errorCode]+' ('+record.errorCode+')';
+  const d=record.data;
+  if(record.kind==='network')return '활성 어댑터 '+d.adapters.length+'개'+(d.truncated?' · 일부 생략':'')+' · 네트워크 구성 조회 성공';
+  if(record.kind==='firewall')return '조회된 방화벽 프로필 '+d.profiles.length+'개 · 설정값은 변경하지 않았습니다.';
+  return '최근 24시간 경고 '+d.warning+'건 · 오류 '+d.error+'건 (침해·공격 탐지 건수 아님)';
+}
+function securityDetails(record){
+  if(record.status==='error')return [];
+  const d=record.data;
+  if(record.kind==='network')return d.adapters.map(x=>'인터페이스 '+x.name+' · IPv4 '+(x.ipv4.join(', ')||'확인 불가')+' · IPv6 '+(x.ipv6.join(', ')||'확인 불가')+' · 게이트웨이 '+(x.gateway.join(', ')||'확인 불가')+' · DNS '+(x.dns.join(', ')||'확인 불가'));
+  if(record.kind==='firewall')return d.profiles.map(x=>x.name+' · 활성화 '+x.enabled+' · 기본 수신 '+(x.inbound||'확인 불가')+' · 기본 송신 '+(x.outbound||'확인 불가'));
+  return ['집계 기간 '+formatTime(d.windowStart)+' ~ '+formatTime(d.windowEnd)+' (브라우저 지역 시간)'];
+}
+function renderSecuritySummary(){
+  setChildren($('pc-security-summary'),...Object.keys(securityLabels).map(kind=>{
+    const r=securityLatest.get(kind);
+    return el('p',{text:securityLabels[kind]+' · '+(r?securityDescription(r):'확인 불가 · 아직 조회하지 않았습니다.')+' · 조회 시각 '+(r?formatTime(r.checkedAt):'미측정')});
+  }));
+}
+function renderSecurityHistory(){
+  const filter=$('pc-security-filter').value;
+  const list=securityHistory.filter(x=>filter==='all'||x.kind===filter);
+  setChildren($('pc-security-timeline'),...(list.length?list.map(r=>el('li',{className:'pc-status-entry'},[
+    el('strong',{text:securityLabels[r.kind]+' · '+formatTime(r.checkedAt)+' (브라우저 지역 시간)'}),
+    el('p',{text:securityDescription(r)}),
+    ...securityDetails(r).map(x=>el('p',{className:'muted',text:x}))
+  ])):[el('li',{className:'muted',text:'해당 종류의 조회 기록 없음 · 확인 불가'})]));
+}
+function renderSecuritySdp(mode){
+  $('pc-security-sdp').textContent=mode==='disconnected'?'SDP 미연결 · 로컬 PC 조회와 별개':
+    mode==='demo'?'SDP 예제 모드 · 실제 SDP 연결 아님':
+    'SDP 실제 연결 확인 불가 · 로컬 PC 조회와 별개';
+}
+async function loadSecurity(){
+  if(securityLoading)return;
+  securityLoading=true;
+  $('pc-security-load').disabled=true;
+  $('pc-security-message').textContent='읽기 전용 Windows 조회 중 · 기존 기록은 현재 결과가 아닙니다.';
+  try{
+    const result=await request('/api/pc-security');
+    if(!result.ok){
+      $('pc-security-message').textContent='확인 불가 · '+result.error.message+' ('+result.error.code+')';
+      renderSecuritySdp(result.meta?.mode);
+      return;
+    }
+    renderSecuritySdp(result.data?.sdpMode);
+    if(result.data?.source!=='windows-powershell-readonly'||!Array.isArray(result.data.items)||result.data.items.length!==4||
+      new Set(result.data.items.map(x=>x.kind)).size!==4){
+      $('pc-security-message').textContent='확인 불가 · 보안 조회 응답의 형식을 검증하지 못했습니다.';
+      return;
+    }
+    const rows=result.data.items.map(validateSecurityRecord);
+    if(rows.some(x=>!x)){
+      $('pc-security-message').textContent='확인 불가 · 자료 종류나 값이 올바르지 않습니다.';
+      return;
+    }
+    for(const record of rows){securityLatest.set(record.kind,record);securityHistory.push(record);}
+    securityHistory.sort((a,b)=>Date.parse(b.checkedAt)-Date.parse(a.checkedAt));
+    if(securityHistory.length>80)securityHistory.length=80;
+    const successes=rows.filter(x=>x.status==='ok').length;
+    $('pc-security-message').textContent='Windows PC 조회 '+successes+'/4종 성공 · 실패 항목은 확인 불가 · 읽기 전용 · 로그 건수는 공격 탐지 결과 아님';
+    renderSecuritySummary();renderSecurityHistory();
+  }finally{securityLoading=false;$('pc-security-load').disabled=false;}
+}
+
 function init() {
   setupNav();
+  renderSecuritySummary();
+  renderSecurityHistory();
+  $('pc-security-filter').addEventListener('change',renderSecurityHistory);
+  $('pc-security-load').addEventListener('click',()=>loadSecurity());
   renderPcSummary();
   renderPcHistory();
   $('pc-status-filter').addEventListener('change',renderPcHistory);
