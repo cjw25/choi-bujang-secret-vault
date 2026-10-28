@@ -261,3 +261,16 @@ button[disabled] { cursor: wait; }
 @media (max-width: 840px) {
   .pc-monitor-lower { grid-template-columns: 1fr; }
 }
+
+/* 3일차: Windows 보안 관제 4개 상태 카드 · 집계 추이 · 상세 기록 */
+.security-control-board { margin-bottom: 18px; }
+.security-control-board > .row { flex-wrap: wrap; }
+.security-status-cards { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:14px 0; }
+.security-metric-card .pc-metric-value { font-size:1.2rem; }
+.security-monitor-lower { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin: 0 0 12px; }
+.security-monitor-panel { border:1px solid var(--border); border-radius:var(--radius); padding:14px; min-width:0; }
+.security-monitor-panel h3 { margin-bottom:6px; }
+.security-trend-list p,.security-explanation-list p { margin:7px 0 0; padding:8px 10px; background:var(--bg); border-radius:var(--radius); overflow-wrap:anywhere; font-size:.86rem; }
+.security-records-panel .pc-status-timeline { max-height:520px; }
+@media (max-width:1180px) { .security-status-cards { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:840px) { .security-monitor-lower { grid-template-columns:1fr; } }
