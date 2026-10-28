@@ -45,6 +45,26 @@
 
       <section id="view-protection" class="view" role="tabpanel" aria-labelledby="tab-protection">
         <h1>보호 현황</h1>
+        <section class="core-first" aria-labelledby="day1-check-title">
+          <h2 id="day1-check-title">1일차 기능 점검표 <span class="tag">실행 상태 · 설명용 예시 아님</span></h2>
+          <p class="muted">상태는 실제 요청 결과와 연결 모드를 기준으로 표시합니다. 조회 전·실패·예제는 성공으로 표시하지 않습니다.</p>
+          <div class="core-shortcuts" aria-label="1일차 핵심 기능">
+            <div class="core-check-item">
+              <a href="#tab-records" data-core-tab="records">1. 기록 보기</a>
+              <p id="day1-record-status" role="status" aria-live="polite">조회 결과 확인 중…</p>
+            </div>
+            <div class="core-check-item">
+              <a href="#pc-status-title">2. 내 PC 상태</a>
+              <p id="day1-pc-status" role="status" aria-live="polite">조회 전 · 현재 확인 불가</p>
+            </div>
+            <div class="core-check-item">
+              <a href="#student-status-title">3. 위험 알림</a>
+              <p id="day1-alert-status" role="status" aria-live="polite">실제 위험 알림 연동 검증 전</p>
+            </div>
+          </div>
+          <p class="muted">다듬을 순서: 기록 보기 → 내 PC 상태 → 위험 알림</p>
+        </section>
+
         <section class="card pc-status-card pc-control-board" aria-labelledby="pc-status-title">
           <h2 id="pc-status-title">내 PC 상태 <span class="tag tag-student">ARGUS-X 추가 기능 · 일반 사용자 권한</span></h2>
           <p class="muted">기존 로컬 PC 측정 API를 재사용합니다. CPU·메모리·디스크는 버튼 클릭 때만 실측하며, 조회 전·실패·예시 값을 현재 정상 수치로 표시하지 않습니다.</p>
@@ -72,26 +92,6 @@
             <p class="muted">값·단위·잰 시각과 실패 이유를 보관하는 임시 화면 기록입니다. 새로고침 시 사라지며 외부 전송·저장은 하지 않습니다.</p>
             <ol id="pc-status-timeline" class="pc-status-timeline" aria-live="polite"></ol>
           </section>
-        </section>
-
-                <section class="core-first" aria-labelledby="day1-check-title">
-          <h2 id="day1-check-title">1일차 기능 점검표 <span class="tag">실행 상태 · 설명용 예시 아님</span></h2>
-          <p class="muted">상태는 실제 요청 결과와 연결 모드를 기준으로 표시합니다. 조회 전·실패·예제는 성공으로 표시하지 않습니다.</p>
-          <div class="core-shortcuts" aria-label="1일차 핵심 기능">
-            <div class="core-check-item">
-              <a href="#tab-records" data-core-tab="records">1. 기록 보기</a>
-              <p id="day1-record-status" role="status" aria-live="polite">조회 결과 확인 중…</p>
-            </div>
-            <div class="core-check-item">
-              <a href="#pc-status-title">2. 내 PC 상태</a>
-              <p id="day1-pc-status" role="status" aria-live="polite">조회 전 · 현재 확인 불가</p>
-            </div>
-            <div class="core-check-item">
-              <a href="#student-status-title">3. 위험 알림</a>
-              <p id="day1-alert-status" role="status" aria-live="polite">실제 위험 알림 연동 검증 전</p>
-            </div>
-          </div>
-          <p class="muted">다듬을 순서: 기록 보기 → 내 PC 상태 → 위험 알림</p>
         </section>
 
         <div class="grid-2">
