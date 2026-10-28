@@ -1,5 +1,6 @@
 import http from 'node:http';
 import {readPcStatus} from './pc-status.mjs';
+import {readPcSecurity} from './pc-security.mjs';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {resolve} from 'node:path';
@@ -681,6 +682,13 @@ export function createOnServer(serverOptions={}) {
         assertAlive();
         send(200,{ok:true,data:guide});return;
         }finally{closeNativeHostOperation(nativeOperation);}
+      }
+      if(req.method==='GET'&&url.pathname==='/api/pc-security'){
+        if(req.headers.authorization!==undefined)throw engineError('REQUEST_INVALID','',400);
+        // SDP 연결 계약과 무관한 로컬 읽기 전용 결과. 실제 원천 연결은 mode로 따로 보낸다.
+        const data=await bounded(signal=>readPcSecurity({signal}));
+        send(200,{ok:true,data:{...data,sdpMode:mode==='disconnected'?'disconnected':mode==='demo'?'demo':'unverified'}});
+        return;
       }
       if(req.method==='GET'&&url.pathname==='/api/pc-status'){
         if(req.headers.authorization!==undefined)throw engineError('REQUEST_INVALID','',400);
