@@ -224,3 +224,18 @@ main:focus { outline: none; }
 .pc-security-disclaimer { border-left: 3px solid var(--challenge); background: var(--challenge-soft); padding: 10px 12px; border-radius: var(--radius); }
 #pc-security-sdp { font-weight: 600; background: var(--unknown-soft); padding: 8px 10px; border-radius: var(--radius); }
 #pc-security-timeline p { overflow-wrap: anywhere; }
+
+/* ARGUS-X 핵심 동선: 학생 표시 및 프로젝트 웹에서 접근 가능한 바로가기 */
+.core-first { padding: 16px 18px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 16px; }
+.core-first h2 { margin-bottom: 10px; }
+.core-shortcuts { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; }
+.core-shortcuts a { display: block; text-decoration: none; color: var(--accent); font-weight: 600; border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; background: var(--accent-soft); }
+.core-shortcuts a:hover { text-decoration: underline; }
+.student-core-overview { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-bottom: 14px; }
+.student-core-overview h3 { margin: 0 0 8px; }
+.student-core-overview ol { margin: 0; padding-left: 24px; }
+.student-core-overview li { margin-bottom: 9px; }
+.student-core-overview p { margin: 3px 0 0; }
+button[disabled] { cursor: wait; }
+:focus-visible { outline: 3px solid #b77900; outline-offset: 3px; box-shadow: var(--focus); }
+@media (max-width: 1080px) { .core-shortcuts { grid-template-columns: 1fr; } }
