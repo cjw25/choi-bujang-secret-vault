@@ -141,7 +141,7 @@ function execute(kind,signal){
   return new Promise(resolve=>{
     const command=Buffer.from(psHeader+commands[kind]+psFooter,'utf16le').toString('base64');
     execFile('powershell.exe',['-NoProfile','-NonInteractive','-EncodedCommand',command],
-      {windowsHide:true,timeout:7000,maxBuffer:128*1024,signal},(error,stdout)=>{
+      {windowsHide:true,timeout:kind==='network'?12000:7000,maxBuffer:128*1024,signal},(error,stdout)=>{
         if(error){
           const code=signal?.aborted?'CANCELLED':
             error.code==='ENOENT'?'POWERSHELL_UNAVAILABLE':

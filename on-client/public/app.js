@@ -242,10 +242,10 @@ function localFailure(code, message, meta = { mode: 'disconnected', checkedAt: n
 const UNKNOWN_META = { mode: 'unknown', checkedAt: null };
 
 // 모든 요청은 10초 뒤 중단된다. signal로 호출자가 취소할 수 있으며, 응답이 없어도 화면이 잠기지 않는다.
-async function request(path, { method = 'GET', body, signal } = {}) {
+async function request(path, { method = 'GET', body, signal, timeoutMs = REQUEST_TIMEOUT_MS } = {}) {
   const controller = new AbortController();
   let timedOut = false;
-  const timer = setTimeout(() => { timedOut = true; controller.abort(); }, REQUEST_TIMEOUT_MS);
+  const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
   const onAbort = () => controller.abort();
   if (signal) {
     if (signal.aborted) controller.abort();
@@ -1471,7 +1471,7 @@ async function loadSecurity(){
   $('pc-security-load').disabled=true;
   $('pc-security-message').textContent='읽기 전용 Windows 조회 중 · 기존 기록은 현재 결과가 아닙니다.';
   try{
-    const result=await request('/api/pc-security');
+    const result=await request('/api/pc-security',{timeoutMs:14000});
     if(!result.ok){
       $('pc-security-message').textContent='확인 불가 · '+result.error.message+' ('+result.error.code+')';
       renderSecuritySdp(result.meta?.mode);
