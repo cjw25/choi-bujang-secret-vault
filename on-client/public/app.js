@@ -372,6 +372,7 @@ function trackError(key, resource) {
   else state.errors.delete(key);
   renderErrors();
   renderStudent('status');
+  renderDay1();
 }
 
 // 현재 세대에서 끝난 응답의 mode가 모두 같을 때만 그 mode를 표시한다. 섞이거나 없으면 확인 불가.
@@ -384,6 +385,30 @@ function currentMode() {
   return modes.size === 1 ? [...modes][0] : 'unknown';
 }
 
+function renderDay1() {
+  const record = $('day1-record-status');
+  const pc = $('day1-pc-status');
+  const alert = $('day1-alert-status');
+  if (record) {
+    const item = state.events;
+    record.textContent = item.status === 'loading' ? '조회 중 · 결과 미확인'
+      : item.status === 'error' ? '조회 실패 · 연결을 확인하고 다시 불러오세요.'
+      : item.status === 'ok' && item.meta?.mode === 'demo' ? '예제 자료만 조회 · 실제 기록 아님'
+      : item.status === 'ok' && item.meta?.mode === 'connected' ? '연결된 기록 조회 성공 · ' + item.data.length + '건'
+      : '기록 조회 미확인 · 원천 연결 상태를 확인하세요.';
+  }
+  if (pc) pc.textContent = pcLoading ? '실제 PC 측정 중…'
+    : !pcCurrentVerified ? '현재 조회 미확인 · PC 상태 다시 조회 필요'
+    : Object.keys(pcMetrics).every(kind => pcLatest.get(kind)?.status === 'ok')
+      ? '실제 PC 측정 성공 · CPU/메모리/디스크 3종'
+      : '일부 조회 실패 · PC 상태 아래에서 실패 항목 확인';
+  if (alert) {
+    const item = state.events;
+    alert.textContent = item.status === 'ok' && item.meta?.mode === 'connected'
+      ? '실제 연결 기록 조회됨 · XDR 경보 ' + item.data.filter(event => event.kind === 'xdr').length + '건 (현재 조회 범위만, 알림 전송 연동 별도 미검증)'
+      : '실제 위험 알림 미검증 · 기록 연결 및 알림 연동 확인 필요';
+  }
+}
 function renderMode() {
   const badge = $('mode-badge');
   const mode = currentMode();
@@ -391,6 +416,7 @@ function renderMode() {
   badge.textContent = MODE_LABELS[mode];
   $('checked-at').textContent = state.checkedAt ? `확인 시각 ${formatTime(state.checkedAt)}` : '';
   renderStudent('status');
+  renderDay1();
 }
 
 function renderErrors() {
@@ -1382,6 +1408,7 @@ async function loadPcStatus(){
   if(pcLoading)return;
   pcLoading=true;
   pcCurrentVerified=false;
+  renderDay1();
   renderPcSummary();
   $('pc-status-load').disabled=true;
   $('pc-status-load').textContent='조회 중…';
@@ -1403,6 +1430,7 @@ async function loadPcStatus(){
       return;
     }
     pcCurrentVerified=true;
+    renderDay1();
     for(const row of rows){
       const prior=pcLastSuccessful.get(row.kind);
       row.previous=row.status==='ok' && prior ? prior.value : null;
@@ -1420,6 +1448,7 @@ async function loadPcStatus(){
     pcLoading=false;
     $('pc-status-load').disabled=false;
     $('pc-status-load').textContent='PC 상태 다시 조회';
+    renderDay1();
   }
 }
 
@@ -1510,6 +1539,7 @@ async function loadSecurity(){
 
 function init() {
   setupNav();
+  renderDay1();
   for(const link of document.querySelectorAll('[data-core-tab]'))link.addEventListener('click',event=>{event.preventDefault();const tab=document.getElementById('tab-'+link.dataset.coreTab);tab?.click();tab?.focus();});
   renderSecuritySummary();
   renderSecurityHistory();
