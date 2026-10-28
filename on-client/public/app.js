@@ -1332,6 +1332,7 @@ async function loadAll() {
 const pcMetrics = Object.freeze({cpu:{name:'CPU 사용률',unit:'%',delta:'%p'},memory:{name:'메모리 사용량',unit:'GiB',delta:'GiB'},disk:{name:'디스크 여유 공간',unit:'GiB',delta:'GiB'}});
 const pcHistory = [];
 const pcLatest = new Map();
+const pcLastSuccessful = new Map();
 let pcLoading = false;
 function safePcMetric(row) {
   if (!row || !Object.hasOwn(pcMetrics,row.kind) || !['ok','error'].includes(row.status)) return null;
@@ -1356,7 +1357,7 @@ function renderPcHistory(){
   }
   setChildren(ul,...history.map(row=>{
     const info=pcMetrics[row.kind];
-    const title=info.name+' · '+formatTime(row.measuredAt)+' (KST, 브라우저 지역 설정 기준)';
+    const title=info.name+' · '+formatTime(row.measuredAt)+' (브라우저 지역 시간)';
     const main=row.status==='ok'?('실측: '+row.value+' '+row.unit):('확인 불가: '+row.reason);
     const change=row.status==='ok' && row.previous!==null
       ? '직전 성공 조회 대비: '+(row.value-row.previous>=0?'+':'')+
@@ -1398,11 +1399,13 @@ async function loadPcStatus(){
       return;
     }
     for(const row of rows){
-      const prior=pcLatest.get(row.kind);
-      row.previous=row.status==='ok' && prior?.status==='ok'?prior.value:null;
+      const prior=pcLastSuccessful.get(row.kind);
+      row.previous=row.status==='ok' && prior ? prior.value : null;
+      if(row.status==='ok')pcLastSuccessful.set(row.kind,row);
       pcLatest.set(row.kind,row);
-      pcHistory.unshift(row);
+      pcHistory.push(row);
     }
+    pcHistory.sort((a,b)=>Date.parse(b.measuredAt)-Date.parse(a.measuredAt));
     if(pcHistory.length>60)pcHistory.length=60;
     const ok=rows.filter(x=>x.status==='ok').length;
     $('pc-status-message').textContent='실제 로컬 PC 조회 '+ok+'/3종 성공 · 실패 항목은 확인 불가로 표시 · 자동 전송/저장 없음';
