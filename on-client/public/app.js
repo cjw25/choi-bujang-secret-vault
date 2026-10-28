@@ -1334,6 +1334,7 @@ const pcHistory = [];
 const pcLatest = new Map();
 const pcLastSuccessful = new Map();
 let pcLoading = false;
+let pcCurrentVerified = false;
 function safePcMetric(row) {
   if (!row || !Object.hasOwn(pcMetrics,row.kind) || !['ok','error'].includes(row.status)) return null;
   if (typeof row.measuredAt !== 'string' || !Number.isFinite(Date.parse(row.measuredAt)))return null;
@@ -1373,19 +1374,22 @@ function renderPcHistory(){
 function renderPcSummary(){
   setChildren($('pc-status-summary'),...Object.entries(pcMetrics).map(([kind,info])=>{
     const row=pcLatest.get(kind);
-    return el('p',{text:info.name+' · '+(row ? row.status==='ok'?row.value+' '+row.unit:'확인 불가 · '+row.reason : '확인 불가 · 아직 조회하지 않았습니다.')
+    return el('p',{text:info.name+' · '+(!pcCurrentVerified&&row?'현재 확인 불가 · 마지막 성공/실패 조회 기록: ': '')+(row ? row.status==='ok'?row.value+' '+row.unit:'확인 불가 · '+row.reason : '확인 불가 · 아직 조회하지 않았습니다.')
       +' · 측정 시각: '+(row?formatTime(row.measuredAt):'미측정')});
   }));
 }
 async function loadPcStatus(){
   if(pcLoading)return;
   pcLoading=true;
+  pcCurrentVerified=false;
+  renderPcSummary();
   $('pc-status-load').disabled=true;
+  $('pc-status-load').textContent='조회 중…';
   $('pc-status-message').textContent='로컬 PC 측정 중 · 이전 값은 새로운 실측값이 아닙니다.';
   try{
     const response=await request('/api/pc-status');
     if(!response.ok){
-      $('pc-status-message').textContent='확인 불가 · '+response.error.message+' ('+response.error.code+')';
+      $('pc-status-message').textContent='확인 불가 · '+response.error.message+' ('+response.error.code+') · 다음: 로컬 서버 연결을 확인한 뒤 PC 상태 다시 조회를 누르세요.';
       return;
     }
     if(response.data?.source!=='local-node-os'||!Array.isArray(response.data.metrics)||
@@ -1398,6 +1402,7 @@ async function loadPcStatus(){
       $('pc-status-message').textContent='확인 불가 · 측정값·단위·시각을 검증하지 못했습니다.';
       return;
     }
+    pcCurrentVerified=true;
     for(const row of rows){
       const prior=pcLastSuccessful.get(row.kind);
       row.previous=row.status==='ok' && prior ? prior.value : null;
@@ -1414,6 +1419,7 @@ async function loadPcStatus(){
   }finally{
     pcLoading=false;
     $('pc-status-load').disabled=false;
+    $('pc-status-load').textContent='PC 상태 다시 조회';
   }
 }
 
@@ -1421,6 +1427,7 @@ async function loadPcStatus(){
 const securityLabels={network:'네트워크 구성',firewall:'Windows 방화벽',system:'System 로그',application:'Application 로그'};
 const securityErrorLabels={ACCESS_DENIED:'일반 사용자에게 읽기 권한이 없습니다.',COMMAND_UNAVAILABLE:'Windows 조회 명령을 사용할 수 없습니다.',QUERY_FAILED:'Windows 조회 요청이 실패했습니다.',QUERY_LIMIT:'최근 24시간 로그가 조회 상한을 초과했습니다.',PROCESS_TIMEOUT:'조회 시간이 초과됐습니다.',POWERSHELL_UNAVAILABLE:'PowerShell 실행 파일을 사용할 수 없습니다.',PROCESS_FAILED:'조회 프로세스에 오류가 발생했습니다.',INVALID_OUTPUT:'응답 형식을 검증하지 못했습니다.',WINDOWS_ONLY:'Windows에서만 조회할 수 있습니다.',CANCELLED:'요청이 취소됐습니다.'};
 const securityHistory=[],securityLatest=new Map();
+let securityCurrentVerified=false;
 let securityLoading=false;
 function validateSecurityRecord(v){
   if(!v||!Object.hasOwn(securityLabels,v.kind)||!['ok','error'].includes(v.status)||v.source!=='windows-powershell-readonly'||typeof v.checkedAt!=='string'||!Number.isFinite(Date.parse(v.checkedAt)))return null;
@@ -1448,7 +1455,7 @@ function securityDetails(record){
 function renderSecuritySummary(){
   setChildren($('pc-security-summary'),...Object.keys(securityLabels).map(kind=>{
     const r=securityLatest.get(kind);
-    return el('p',{text:securityLabels[kind]+' · '+(r?securityDescription(r):'확인 불가 · 아직 조회하지 않았습니다.')+' · 조회 시각 '+(r?formatTime(r.checkedAt):'미측정')});
+    return el('p',{text:securityLabels[kind]+' · '+(!securityCurrentVerified&&r?'현재 확인 불가 · 과거 조회 기록: ':'')+(r?securityDescription(r):'확인 불가 · 아직 조회하지 않았습니다.')+' · 조회 시각 '+(r?formatTime(r.checkedAt):'미측정')});
   }));
 }
 function renderSecurityHistory(){
@@ -1468,12 +1475,15 @@ function renderSecuritySdp(mode){
 async function loadSecurity(){
   if(securityLoading)return;
   securityLoading=true;
+  securityCurrentVerified=false;
+  renderSecuritySummary();
   $('pc-security-load').disabled=true;
+  $('pc-security-load').textContent='조회 중…';
   $('pc-security-message').textContent='읽기 전용 Windows 조회 중 · 기존 기록은 현재 결과가 아닙니다.';
   try{
     const result=await request('/api/pc-security',{timeoutMs:14000});
     if(!result.ok){
-      $('pc-security-message').textContent='확인 불가 · '+result.error.message+' ('+result.error.code+')';
+      $('pc-security-message').textContent='확인 불가 · '+result.error.message+' ('+result.error.code+') · 다음: 로컬 서버/Windows 조회 상태를 확인한 뒤 네트워크·보안 다시 조회를 누르세요.';
       renderSecuritySdp(result.meta?.mode);
       return;
     }
@@ -1488,17 +1498,19 @@ async function loadSecurity(){
       $('pc-security-message').textContent='확인 불가 · 자료 종류나 값이 올바르지 않습니다.';
       return;
     }
+    securityCurrentVerified=true;
     for(const record of rows){securityLatest.set(record.kind,record);securityHistory.push(record);}
     securityHistory.sort((a,b)=>Date.parse(b.checkedAt)-Date.parse(a.checkedAt));
     if(securityHistory.length>80)securityHistory.length=80;
     const successes=rows.filter(x=>x.status==='ok').length;
     $('pc-security-message').textContent='Windows PC 조회 '+successes+'/4종 성공 · 실패 항목은 확인 불가 · 읽기 전용 · 로그 건수는 공격 탐지 결과 아님';
     renderSecuritySummary();renderSecurityHistory();
-  }finally{securityLoading=false;$('pc-security-load').disabled=false;}
+  }finally{securityLoading=false;$('pc-security-load').disabled=false;$('pc-security-load').textContent='네트워크·보안 다시 조회';}
 }
 
 function init() {
   setupNav();
+  for(const link of document.querySelectorAll('[data-core-tab]'))link.addEventListener('click',event=>{event.preventDefault();const tab=document.getElementById('tab-'+link.dataset.coreTab);tab?.click();tab?.focus();});
   renderSecuritySummary();
   renderSecurityHistory();
   $('pc-security-filter').addEventListener('change',renderSecurityHistory);
