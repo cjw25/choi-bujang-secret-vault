@@ -33,16 +33,32 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\start-alekov.ps1
 | `node` 명령 없음 / 지원 버전 아님 | Node.js **24.19.0** 설치/버전 확인 → **새 PowerShell**에서 2번부터 다시 실행 |
 | `앱 폴더가 아닙니다` / 실행 파일 없음 | 현재 폴더가 전달받은 **`on-client`**인지 확인; 파일을 지우거나 재설치하지 않기 |
 | `포트 5189 를 다른 프로그램이 쓰고 있습니다` | 기존 앱을 중복 실행했는지 확인. 다른 프로그램을 강제 종료하지 말고 `-Port 5190`으로 실행하면 **http://127.0.0.1:5190/** 로 접속 |
+| `QUERY_FAILED` (System/Application 로그) | **이 PC의 조회 오류 원문을 먼저 확인**합니다. 실제 독립 실행 PC에서 기존 `-FilterHashtable` 조회가 한국어 날짜·시간 문자열을 해석하지 못해 `DateTimeExpected`가 발생했습니다. **5일차 수정본**은 최근 24시간을 `-FilterXPath`의 `timediff()`로 조회합니다. 수정본으로 다시 조회하고 실패하면 오류 원문을 보존합니다. |
 | `ENGINE_NOT_CONNECTED` / `SDP 미연결` | **기존 SDP 서버·에이전트 연결 어댑터** 미연결 상태. PC 자체 측정 실패와 구분. 관리자의 연결 안내 없이 인증정보·정책을 임의 수정하지 않기 |
 | `확인 불가` / `TIMEOUT` / `ACCESS_DENIED` | **실패 항목과 이유**를 기록. 로컬 서버·일반 사용자 조회 권한을 확인하고 해당 **다시 조회**를 누르기. 관리자 권한이나 방화벽 설정은 변경하지 않기 |
 
-## 5. 다른 사람이 안내만 보고 따라 한 결과 (작성 전에는 성공으로 표시 금지)
-- 테스트한 사람/PC(개인정보 제외): **미기록**
-- Node.js 버전 / 사용한 프로젝트 폴더: **미기록**
-- 마지막으로 성공한 단계: **미기록**
-- **실제로 막힌 단계와 오류 원문**: **미제공** (위 오류 표는 *대처 예시*이며 다른 사람의 실측 결과가 아님)
-- 원인 분류(안내/코드/환경/확인 불가): **확인 전**
-- 필요한 최소 수정과 수정 파일: **확인 전**
-- 안내만 보고 다시 실행한 결과: **미검증**
+## 5. 다른 사람의 독립 실행 기록 (2026-10-28, 사용자 전달 결과)
+- **안내서만 보고 앱 실행: 성공(테스터 보고)**. 테스트 대상 PC의 Node.js 정확한 버전·개인 신원은 미제공.
+- **실제로 성공:** CPU·메모리·디스크 3종 실측 및 반복 조회 비교, 네트워크·방화벽 조회.
+- **실패:** System/Application 로그 `QUERY_FAILED`, 보안 기록·계정·기기·세션 `ENGINE_NOT_CONNECTED`. AI 연결 및 Tab/Enter 키보드 조작 **미검증**.
+- **원인 재현:** 동일 PC에서 System·Application 모두 `DateTimeExpected,Microsoft.PowerShell.Commands.GetWinEventCommand` / `26-10-28(수) 오후 3:46:43 값은 올바른 DateTime 형식이 아닙니다.` 출력. **기존 날짜 매개변수 처리에서 지역화된 날짜 문자열을 인식하지 못한 것**으로 확인.
+- **수정 방법 사전 검증:** 동일 PC의 `Get-WinEvent -LogName ... -FilterXPath '*[System[(Level=2 or Level=3) and TimeCreated[timediff(@SystemTime) <= 86400000]]]'` 방식으로 System / Application **둘 다 XPath 조회 성공**. 이 시험은 각 로그 최대 **1건**만 확인한 것이며 전체 집계 성공 증거는 아님.
+- **원인 분류:** 로그 조회는 **코드의 날짜 형식 호환성 문제**로 보고 `src/pc-security.mjs`의 System/Application 조회 조건만 수정; SDP는 **별도 외부 연결 설정/어댑터 문제**로 본다. 앱을 켰다는 사실만으로 원천 연결이 된 것은 아님.
+- **수정 후 재검증:** **아직 미실시**. 다른 PC에서 **수정본 폴더**로 아래 순서를 다시 실행하고 결과를 기록할 것. 이전 ZIP/프로젝트 폴더는 삭제·이동·덮어쓰지 않음.
+
+### 수정본 재검증 순서
+1. 기존 실행 창에서 Ctrl+C로 로컬 서버 종료. Git 작업 폴더를 사용하는 경우 **해당 작업 브랜치**의 수정본을 반영하고, ZIP으로 받은 프로젝트라면 새 ZIP/폴더를 **별도 위치**에 받아 원본 보존 (ZIP 폴더에서 Git pull을 시도하지 않음).
+2. 수정된 폴더의 `on-client` PowerShell에서 다음을 **순서대로** 실행. `node --check`는 **정적 문법 검사**이며 Windows 실행 검사가 아님.
+
+```powershell
+node --version
+node --check .\src\pc-security.mjs
+npm.cmd run check
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\start-alekov.ps1
+```
+
+3. 같은 PC의 브라우저에서 `http://127.0.0.1:5189/` → **보호 현황 → 네트워크·보안 관제 → 네트워크·보안 다시 조회**.
+4. System과 Application 각각 **조회 성공**, **최근 24시간 경고·오류 실제 건수(건)**, 조회 시각, 비교 결과를 확인. **테스터가 직접 확인한 수치만** 기록하고 임의 예시 값은 `demo`로 표기. 실패하면 로그별 오류 코드만 기록하고 임의로 0건/성공 표시 금지.
+5. CPU·메모리·디스크 및 네트워크·방화벽 기존 기능이 유지되는지 확인. `ENGINE_NOT_CONNECTED`는 SDP 담당자 설정이 없는 한 **별도의 미연결**로 기록. AI/키보드는 실제로 검사하지 않았다면 **미검증**으로 남긴다.
 
 **보존·보안:** `ARGUS-X-22-repro` 작업 폴더, 원본 `aleph-defense-starter`, 기존 제출 커밋을 지우거나 옮기지 않습니다. 비밀키·토큰·IP/DNS 상세 정보를 캡처나 기록에 넣지 않습니다. 설치형 `setup.exe` 제작·배포, 포장 명령, 공격 실습, 방화벽·보안 설정 변경은 **수행하지 않습니다**.
