@@ -64,7 +64,10 @@ const commands=Object.freeze({
   $start = $end.AddHours(-24)
   $counts = @{error=0;warning=0}
   try {
-    Get-WinEvent -FilterHashtable @{LogName='System';Level=@(2,3);StartTime=$start;EndTime=$end} -ErrorAction Stop |
+    # Windows locale may turn hashtable DateTime into a localized string (DateTimeExpected).
+    # Use the tested relative 24-hour XPath condition; do not pass a formatted date into the query.
+    $xpath = '*[System[(Level=2 or Level=3) and TimeCreated[timediff(@SystemTime) <= 86400000]]]'
+    Get-WinEvent -LogName 'System' -FilterXPath $xpath -ErrorAction Stop |
       ForEach-Object {
         if ($_.Level -eq 2) { $counts.error++ }
         elseif ($_.Level -eq 3) { $counts.warning++ }
@@ -82,7 +85,10 @@ const commands=Object.freeze({
   $start = $end.AddHours(-24)
   $counts = @{error=0;warning=0}
   try {
-    Get-WinEvent -FilterHashtable @{LogName='Application';Level=@(2,3);StartTime=$start;EndTime=$end} -ErrorAction Stop |
+    # Windows locale may turn hashtable DateTime into a localized string (DateTimeExpected).
+    # Use the tested relative 24-hour XPath condition; do not pass a formatted date into the query.
+    $xpath = '*[System[(Level=2 or Level=3) and TimeCreated[timediff(@SystemTime) <= 86400000]]]'
+    Get-WinEvent -LogName 'Application' -FilterXPath $xpath -ErrorAction Stop |
       ForEach-Object {
         if ($_.Level -eq 2) { $counts.error++ }
         elseif ($_.Level -eq 3) { $counts.warning++ }
