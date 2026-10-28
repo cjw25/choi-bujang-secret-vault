@@ -207,3 +207,13 @@ main:focus { outline: none; }
 .state-ok { background: var(--allow-soft); color: var(--allow); }
 .ai-result[data-state="connected"] { border-left: 3px solid var(--allow); padding-left: 12px; }
 .ai-result[data-state="unknown"] { border-left: 3px solid var(--unknown); padding-left: 12px; }
+
+/* ARGUS-X PC 실측 타임라인: 기존 XDR 기록과 별도 표시 */
+.pc-status-card { border-left: 4px solid var(--accent); }
+.pc-status-card .row { align-items: center; margin-bottom: 10px; }
+.pc-status-summary { display: grid; gap: 6px; margin: 8px 0 12px; }
+.pc-status-summary p { margin: 0; padding: 8px 10px; background: var(--bg); border-radius: var(--radius); overflow-wrap: anywhere; }
+.pc-status-timeline { list-style: none; display: grid; gap: 10px; padding: 0; margin: 12px 0 0; max-height: 520px; overflow: auto; }
+.pc-status-entry { border-left: 3px solid var(--accent); background: var(--bg); border-radius: var(--radius); padding: 10px 12px; overflow-wrap: anywhere; }
+.pc-status-entry p { margin: 5px 0 0; }
+.pc-status-entry strong { font-size: 0.9rem; }
